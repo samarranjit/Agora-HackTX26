@@ -1,0 +1,641 @@
+{
+  "sessionId": "ses_4ca548eb",
+  "mode": "learning",
+  "subjects": [
+    {
+      "id": "subj_1",
+      "title": "Decision Trees and Supervised Learning",
+      "challenges": [
+        {
+          "id": "ch_1",
+          "question": "How many decisions are required to specify a depth-1 decision tree on a two-dimensional feature space?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Two decisions"
+            },
+            {
+              "id": "b",
+              "text": "Four decisions"
+            },
+            {
+              "id": "c",
+              "text": "Eight decisions"
+            },
+            {
+              "id": "d",
+              "text": "Ten decisions"
+            }
+          ],
+          "mnemonic": "Four wooden picture frames stacked neatly on a square dining room table.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_2",
+          "question": "Into how many regions can a depth-d decision tree carve a two-dimensional plane?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Up to 2^d regions"
+            },
+            {
+              "id": "b",
+              "text": "Up to d^2 regions"
+            },
+            {
+              "id": "c",
+              "text": "Up to 2d regions"
+            },
+            {
+              "id": "d",
+              "text": "Up to d! regions"
+            }
+          ],
+          "mnemonic": "Two glossy cardboard numbers, two and d, glued onto a red brick wall.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_3",
+          "question": "What are the two redeeming qualities of decision trees identified in the text?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Fast training speed and low memory footprint"
+            },
+            {
+              "id": "b",
+              "text": "Natural probability outputs and scale invariance"
+            },
+            {
+              "id": "c",
+              "text": "Interpretability and the ability to be combined into powerful ensembles"
+            },
+            {
+              "id": "d",
+              "text": "Smooth decision boundaries and immunity to overfitting"
+            }
+          ],
+          "mnemonic": "A clear glass magnifying glass resting on top of a heavy iron chain link.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_4",
+          "question": "Why are depth-2 decision trees and logistic regression described as incomparable model families?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Depth-2 trees require larger datasets than logistic regression to achieve statistical stability."
+            },
+            {
+              "id": "b",
+              "text": "Logistic regression produces continuous probability outputs while depth-2 trees produce discrete classes."
+            },
+            {
+              "id": "c",
+              "text": "Logistic regression cannot make vertical cuts while depth-2 trees can only make diagonal splits."
+            },
+            {
+              "id": "d",
+              "text": "No tree can produce a diagonal cut, and no single line can reproduce a depth-2 tree's four-quadrant partition."
+            }
+          ],
+          "mnemonic": "A straight steel rule crossing over a four-quadrant wooden chessboard.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_5",
+          "question": "What occurs when instantiating a decision tree classifier in code prior to executing the .fit() method?",
+          "options": [
+            {
+              "id": "a",
+              "text": "The algorithm calculates default parameters based on initial dataset statistics."
+            },
+            {
+              "id": "b",
+              "text": "The code declares which models are allowed without inspecting any data."
+            },
+            {
+              "id": "c",
+              "text": "The model calculates initial cross-entropy loss values on hidden split folds."
+            },
+            {
+              "id": "d",
+              "text": "The algorithm fits four structural parameters to minimize empirical training error."
+            }
+          ],
+          "mnemonic": "An empty black plastic clipboard with a printed declaration sheet clipped to it.",
+          "xpReward": 5
+        }
+      ]
+    },
+    {
+      "id": "subj_2",
+      "title": "Loss Functions and Model Fitting",
+      "challenges": [
+        {
+          "id": "ch_6",
+          "question": "How does hinge loss evaluate misclassified data points?",
+          "options": [
+            {
+              "id": "a",
+              "text": "In proportion to their distance from the boundary."
+            },
+            {
+              "id": "b",
+              "text": "By assigning a fixed penalty of 1 regardless of distance."
+            },
+            {
+              "id": "c",
+              "text": "Exponentially based on prediction magnitude."
+            },
+            {
+              "id": "d",
+              "text": "By taking the squared difference between predicted and actual values."
+            }
+          ],
+          "mnemonic": "A metal door hinge connected to a measuring tape stretching to a red boundary line.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_7",
+          "question": "Why is 0/1 loss notoriously difficult to optimize using local search methods like gradient descent?",
+          "options": [
+            {
+              "id": "a",
+              "text": "It requires computing second-order derivatives at every step."
+            },
+            {
+              "id": "b",
+              "text": "Its curve is jagged, causing local search to get stuck on small upticks."
+            },
+            {
+              "id": "c",
+              "text": "It heavily penalizes confident correct predictions."
+            },
+            {
+              "id": "d",
+              "text": "Its loss values grow exponentially as confidence increases."
+            }
+          ],
+          "mnemonic": "A hiker climbing a jagged saw blade gets stuck on a small sharp tooth.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_8",
+          "question": "Under absolute loss in regression, how does the penalty of ten $1,000 errors compare to one $10,000 error?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Ten $1,000 errors cost ten times more than one $10,000 error."
+            },
+            {
+              "id": "b",
+              "text": "One $10,000 error costs ten times more than ten $1,000 errors."
+            },
+            {
+              "id": "c",
+              "text": "Ten $1,000 errors cost the exact same as one $10,000 error."
+            },
+            {
+              "id": "d",
+              "text": "Absolute loss cannot evaluate errors greater than $1,000."
+            }
+          ],
+          "mnemonic": "Ten dollar bills stacked next to a single ten-thousand-dollar golden coin on a scale.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_9",
+          "question": "When fitting a model with no features at all, which constant minimizes absolute loss?",
+          "options": [
+            {
+              "id": "a",
+              "text": "The mean of the y's."
+            },
+            {
+              "id": "b",
+              "text": "The variance of the y's."
+            },
+            {
+              "id": "c",
+              "text": "The mode of the y's."
+            },
+            {
+              "id": "d",
+              "text": "The median of the y's."
+            }
+          ],
+          "mnemonic": "A wooden ruler balancing perfectly on a golden box labeled with the word MEDIAN.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_10",
+          "question": "How does exponential loss penalize errors when training a model?",
+          "options": [
+            {
+              "id": "a",
+              "text": "It would rather make many small mistakes than one large one."
+            },
+            {
+              "id": "b",
+              "text": "It penalizes small mistakes more severely than one large mistake."
+            },
+            {
+              "id": "c",
+              "text": "It treats one large mistake and many small mistakes completely identically."
+            },
+            {
+              "id": "d",
+              "text": "It charges zero penalty for any incorrect prediction regardless of confidence."
+            }
+          ],
+          "mnemonic": "A gigantic iron anvil falling next to a pile of ten tiny plastic thimbles.",
+          "xpReward": 5
+        }
+      ]
+    },
+    {
+      "id": "subj_3",
+      "title": "Overfitting and Cross Validation",
+      "challenges": [
+        {
+          "id": "ch_11",
+          "question": "How is underfitting detected according to the document?",
+          "options": [
+            {
+              "id": "a",
+              "text": "By a large gap between training accuracy and test accuracy"
+            },
+            {
+              "id": "b",
+              "text": "By low training accuracy"
+            },
+            {
+              "id": "c",
+              "text": "By high variance in individual fold scores"
+            },
+            {
+              "id": "d",
+              "text": "By low computation time during model fitting"
+            }
+          ],
+          "mnemonic": "A toy train resting on a low wooden shelf labeled 'Training Accuracy'.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_12",
+          "question": "What is the primary computational downside of K-fold cross-validation compared to a single train/test split?",
+          "options": [
+            {
+              "id": "a",
+              "text": "It requires K model fits instead of one fit."
+            },
+            {
+              "id": "b",
+              "text": "It reduces the training set size to zero."
+            },
+            {
+              "id": "c",
+              "text": "It overestimates the best number of estimators."
+            },
+            {
+              "id": "d",
+              "text": "It prevents calculating individual fold losses."
+            }
+          ],
+          "mnemonic": "K heavy iron gears stacked high on top of a single computer processor.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_13",
+          "question": "Why is cross-validation omitted entirely when training neural networks according to the document?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Neural networks do not experience overfitting on training data."
+            },
+            {
+              "id": "b",
+              "text": "Data cannot be partitioned into K pieces for deep architectures."
+            },
+            {
+              "id": "c",
+              "text": "Fold loss scores cannot be calculated using model predictions."
+            },
+            {
+              "id": "d",
+              "text": "It is too expensive because a single fit can take ten minutes or ten hours."
+            }
+          ],
+          "mnemonic": "A thick black network cable attached to a giant brass price tag.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_14",
+          "question": "What systematic effect does a small K value in K-fold cross-validation have on regularization constants?",
+          "options": [
+            {
+              "id": "a",
+              "text": "It underestimates the best regularization constants."
+            },
+            {
+              "id": "b",
+              "text": "It overestimates optimal tree depth and tree count."
+            },
+            {
+              "id": "c",
+              "text": "It overestimates the best regularization constants."
+            },
+            {
+              "id": "d",
+              "text": "It completely removes bias toward simpler models."
+            }
+          ],
+          "mnemonic": "A tiny letter K pushing up a heavy wooden regularization balance beam.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_15",
+          "question": "What detail does the document recommend evaluating alongside the average cross-validation score?",
+          "options": [
+            {
+              "id": "a",
+              "text": "The total number of parameters in the model"
+            },
+            {
+              "id": "b",
+              "text": "The individual fold scores C_1, ..., C_K"
+            },
+            {
+              "id": "c",
+              "text": "The execution time of single test predictions"
+            },
+            {
+              "id": "d",
+              "text": "The training loss on the combined dataset"
+            }
+          ],
+          "mnemonic": "A teacher inspecting paper cards labeled C1 through CK spread on a table.",
+          "xpReward": 5
+        }
+      ]
+    },
+    {
+      "id": "subj_4",
+      "title": "Linear and Logistic Regression Models",
+      "challenges": [
+        {
+          "id": "ch_16",
+          "question": "What output value does the sigmoid function produce when given an input score of z = 0?",
+          "options": [
+            {
+              "id": "a",
+              "text": "1/2"
+            },
+            {
+              "id": "b",
+              "text": "0"
+            },
+            {
+              "id": "c",
+              "text": "1"
+            },
+            {
+              "id": "d",
+              "text": "-1"
+            }
+          ],
+          "mnemonic": "A wooden ruler balanced horizontally on a silver coin split at the half mark.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_17",
+          "question": "In scikit-learn's logistic regression implementation, what does calling model.predict(X) return?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Raw linear z-scores"
+            },
+            {
+              "id": "b",
+              "text": "Hard labels obtained by thresholding the probability at 0.5"
+            },
+            {
+              "id": "c",
+              "text": "Continuous probability values between 0 and 1"
+            },
+            {
+              "id": "d",
+              "text": "The gradient vectors of the loss function"
+            }
+          ],
+          "mnemonic": "A heavy brass stamp presses hard letters onto a cold stone doorstep threshold.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_18",
+          "question": "Which loss function is minimized by model.fit when executing logistic regression?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Mean squared error loss"
+            },
+            {
+              "id": "b",
+              "text": "Hinge loss"
+            },
+            {
+              "id": "c",
+              "text": "Cross-entropy loss"
+            },
+            {
+              "id": "d",
+              "text": "Absolute L1 loss"
+            }
+          ],
+          "mnemonic": "A wooden cross sitting on top of an iron compass inside a toolbox.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_19",
+          "question": "According to the document, at what predicted probability value does the decision boundary occur in logistic regression?",
+          "options": [
+            {
+              "id": "a",
+              "text": "0"
+            },
+            {
+              "id": "b",
+              "text": "0.1"
+            },
+            {
+              "id": "c",
+              "text": "1.0"
+            },
+            {
+              "id": "d",
+              "text": "1/2"
+            }
+          ],
+          "mnemonic": "A wooden boundary fence cuts through the center of a half-filled iron bowl.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_20",
+          "question": "When training an unregularized logistic regression model on perfectly linearly separable data, what happens to the estimated coefficients?",
+          "options": [
+            {
+              "id": "a",
+              "text": "They rapidly shrink toward zero"
+            },
+            {
+              "id": "b",
+              "text": "They are pushed toward infinity"
+            },
+            {
+              "id": "c",
+              "text": "They constantly oscillate between positive and negative values"
+            },
+            {
+              "id": "d",
+              "text": "They converge strictly to zero"
+            }
+          ],
+          "mnemonic": "An endless steel tape measure stretches outward beyond a mountain peak into space.",
+          "xpReward": 5
+        }
+      ]
+    },
+    {
+      "id": "subj_5",
+      "title": "Ensemble Methods and Gradient Boosting",
+      "challenges": [
+        {
+          "id": "ch_21",
+          "question": "According to the bias-variance trade-off, how do boosting and bagging alter model bias and variance?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Boosting reduces bias at the cost of variance, while bagging reduces variance at the cost of bias."
+            },
+            {
+              "id": "b",
+              "text": "Boosting reduces variance at the cost of bias, while bagging reduces bias at the cost of variance."
+            },
+            {
+              "id": "c",
+              "text": "Both boosting and bagging reduce bias without affecting variance."
+            },
+            {
+              "id": "d",
+              "text": "Both boosting and bagging reduce variance without affecting bias."
+            }
+          ],
+          "mnemonic": "A boosting rocket burns bias fuel while a bagged net catches swinging variance weights.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_22",
+          "question": "Which third hyperparameter does gradient boosting introduce beyond tree depth and the number of estimators?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Maximum feature subsample ratio"
+            },
+            {
+              "id": "b",
+              "text": "L1 regularization coefficient"
+            },
+            {
+              "id": "c",
+              "text": "Step size, also called the learning rate"
+            },
+            {
+              "id": "d",
+              "text": "Minimum leaf node weight"
+            }
+          ],
+          "mnemonic": "A golden ruler labeled learning rate measures steps between wooden tree estimators.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_23",
+          "question": "How is stacking conceptually defined in relation to feature engineering?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Stacking is hyperparameter tuning where features are replaced by target labels."
+            },
+            {
+              "id": "b",
+              "text": "Stacking is feature engineering where the engineered feature is another model's prediction."
+            },
+            {
+              "id": "c",
+              "text": "Stacking is loss minimization where residual errors are appended as sample weights."
+            },
+            {
+              "id": "d",
+              "text": "Stacking is data imputation where missing values are replaced by tree predictions."
+            }
+          ],
+          "mnemonic": "A glass column filled with printed model predictions is attached to a database desk.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_24",
+          "question": "What standard fitting procedure does gradient boosting reduce to when evaluated under squared loss?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Bootstrap sample reweighting"
+            },
+            {
+              "id": "b",
+              "text": "Exponential margin scaling"
+            },
+            {
+              "id": "c",
+              "text": "Cross-entropy derivative mapping"
+            },
+            {
+              "id": "d",
+              "text": "Residual fitting"
+            }
+          ],
+          "mnemonic": "A silver gradient ramp slides directly into a labeled residual fitting box.",
+          "xpReward": 5
+        },
+        {
+          "id": "ch_25",
+          "question": "What is the document's rule of thumb regarding model depth and target problem for bagging versus boosting?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Bag deep trees to reduce overfitting, but boost shallow trees to reduce underfitting."
+            },
+            {
+              "id": "b",
+              "text": "Boost deep trees to reduce overfitting, but bag shallow trees to reduce underfitting."
+            },
+            {
+              "id": "c",
+              "text": "Bag shallow trees to reduce variance, but boost deep trees to reduce bias."
+            },
+            {
+              "id": "d",
+              "text": "Stack shallow trees to reduce overfitting, but bag complex trees to reduce underfitting."
+            }
+          ],
+          "mnemonic": "Deep tree roots placed in bags reduce overflow while shallow tree sprouts boost upward.",
+          "xpReward": 5
+        }
+      ]
+    }
+  ],
+  "progress": {
+    "xp": 0,
+    "xpToUnlock": 100,
+    "adventureUnlocked": false
+  }
+}
