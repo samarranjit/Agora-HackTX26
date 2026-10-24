@@ -1,0 +1,47 @@
+[project]
+name = "learning-game-backend"
+version = "0.1.0"
+description = "HTTP backend for the learning game: accounts, PDFs, game master questions, and persistence."
+readme = "README.md"
+authors = [
+    { name = "Samar Ranjit", email = "84336809+samarranjit@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "argon2-cffi>=25.1.0",
+    "fastapi>=0.162.0",
+    "httpx>=0.28.1",
+    "learning-game-engine",
+    "pypdf>=6.21.2",
+    "python-multipart>=0.0.32",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+learning-game-api = "learning_game_backend.main:main"
+
+[tool.uv.sources]
+learning-game-engine = { path = "../Game_Engine", editable = true }
+
+[build-system]
+requires = ["uv_build>=0.9.16,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import sorting, bugbear, pyupgrade, simplify.
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "ruff>=0.17.2",
+]
