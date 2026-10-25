@@ -12,8 +12,6 @@ Sign in, upload a PDF, and survive the Storywood using what you studied.
 2. Defeat the Forest Goblin, the Big Bad Wolf, and the Storykeeper Dragon — in that order.
 3. Free the princess. The prison opens only after the dragon falls.
 
-There is no guest mode and no invented questions. If the backend has not issued a challenge, the frontend does not start one.
-
 ## How you play
 
 | Step | What happens |
@@ -36,16 +34,13 @@ Rules live only in `Game_Engine`. The backend applies them. The frontend never c
 | Start | 0 XP, 100 health (cap 100) |
 | Difficulty | Integer 1–5, taken from the stored question |
 | Correct practice | +10 / 15 / 20 / 25 / 30 XP by difficulty; +5 health, up to the cap |
-| Wrong practice | No XP or health change |
-| Adventure unlock | 100 XP, permanent |
+| Adventure unlock | 100 XP |
 | Battle entry | 30 XP, charged once when the fight starts |
 | Correct battle | Completes the villain; no bonus XP |
 | Wrong battle | −2 × difficulty XP, −5 × difficulty health (neither below 0) |
 | Questions to win | 1 question, 1 correct answer |
 | Health reaches 0 | Battle ends as a knockout. Entry fee is not refunded. Practice to recover. |
-| Villains | Forest Goblin (1) → Bridge Troll / Wolf (3) → Castle Dragon (5) |
-
-A host may override starting XP and the practice/battle economy through backend environment variables. Those overrides do not change villain order or who is allowed to invent a win.
+| Villains | Forest Goblin, Wolf, Castle Dragon |
 
 ## Architecture
 
@@ -65,7 +60,7 @@ Browser (frontend) ── HTTPS + bearer token ──▶ Backend ── RAG cont
 ## Run
 
 ```sh
-# Game master (optional; required for real PDF questions)
+# Game master
 # set GEMINI_API_KEY and RAG_API_KEY, then:
 python -m ai_module.service
 
