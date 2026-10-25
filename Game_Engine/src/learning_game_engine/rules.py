@@ -37,6 +37,15 @@ class Rules:
     # A wrong battle answer costs this many XP per difficulty level.
     battle_wrong_xp_per_difficulty: int = 2
     battle_cost: int = 30
+    # Charged when a practice question is shown. 0 keeps the default tests free.
+    practice_cost: int = 0
+    # If set, a correct practice answer awards this instead of the difficulty table.
+    practice_correct_xp: int | None = None
+    # If set, a wrong battle answer costs this instead of per-difficulty * difficulty.
+    battle_wrong_xp: int | None = None
+    # When false, a correct battle answer does not change XP. Used by the live
+    # demo so defeating a guardian leaves the player's balance unchanged.
+    award_battle_xp: bool = True
     # Ground-zero adventure: one question per villain. With three villains,
     # this makes three adventure questions total (easy, harder, final).
     battle_question_count: int = 1
@@ -57,10 +66,15 @@ class Rules:
             "unlock_threshold",
             "battle_wrong_xp_per_difficulty",
             "battle_cost",
+            "practice_cost",
             "battle_wrong_health_per_difficulty",
             "practice_correct_health_restore",
         ):
             if getattr(self, name) < 0:
+                raise ValueError(f"{name} cannot be negative")
+        for name in ("practice_correct_xp", "battle_wrong_xp"):
+            value = getattr(self, name)
+            if value is not None and value < 0:
                 raise ValueError(f"{name} cannot be negative")
         expected_rewards = MAX_DIFFICULTY - MIN_DIFFICULTY + 1
         if len(self.correct_xp_by_difficulty) != expected_rewards or any(

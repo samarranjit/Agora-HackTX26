@@ -16,6 +16,9 @@ class RulesValidationTests(unittest.TestCase):
         invalid_changes: list[dict[str, object]] = [
             {"battle_wins_required": 4},
             {"battle_cost": -1},
+            {"practice_cost": -1},
+            {"practice_correct_xp": -1},
+            {"battle_wrong_xp": -1},
             {"battle_question_count": 0},
             {"correct_xp_by_difficulty": (10, 20)},
             {"correct_xp_by_difficulty": (10, 15, -20, 25, 30)},
@@ -37,6 +40,10 @@ class DefaultRuleTests(unittest.TestCase):
         )
         self.assertEqual((rules.starting_xp, rules.unlock_threshold), (0, 100))
         self.assertEqual((rules.battle_cost, rules.battle_question_count), (30, 1))
+        self.assertEqual(
+            (rules.practice_cost, rules.practice_correct_xp, rules.battle_wrong_xp),
+            (0, None, None),
+        )
         self.assertEqual(rules.battle_wins_required, 1)
         self.assertEqual((rules.starting_health, rules.max_health), (100, 100))
         self.assertEqual(rules.battle_wrong_xp_per_difficulty, 2)

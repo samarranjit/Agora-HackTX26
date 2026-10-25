@@ -28,13 +28,13 @@ export function validResponse(path, data, method = 'GET') {
   if (path === '/api/auth/login') return fields(data, { access_token: (v) => string(v) && !!v.trim(), token_type: (v) => v === 'bearer', expires_at: string })
   if (path === '/api/auth/register') return fields(data, { user_id: string, username: string })
   if (path === '/api/me/status') return fields(data, status)
-  if (path === '/api/me/state') return fields(data, { ...status, username: string, rules: object, villains: Array.isArray })
+  if (path === '/api/me/state' || path === '/api/me/restart') return fields(data, { ...status, username: string, rules: object, villains: Array.isArray })
   if (path === '/api/me/active-attempt') return object(data) && (data.attempt === null || question(data.attempt))
   if (path === '/api/practice/attempts') return fields(data, { created: boolean, attempt: question })
   if (path === '/api/adventure/battles') return fields(data, { ...balance, battle_attempt_id: string, villain_name: string, villain_id: string, entry_cost: number, attempt: question })
   if (/^\/api\/attempts\/[^/]+\/answer$/.test(path)) return fields(data, { ...balance, max_health: number, attempt_id: string, correct: boolean,
     feedback: (v) => fields(v, { explanation: string, correct_answer: string }), xp_delta: number, health_delta: number,
-    encounter: (v) => fields(v, { mode: string, outcome: (x) => ['none', 'in_progress', 'won', 'lost', 'knocked_out'].includes(x), adventure_unlocked_now: boolean, adventure_completed: boolean }),
+    encounter: (v) => fields(v, { mode: string, outcome: (x) => ['none', 'in_progress', 'won', 'lost', 'knocked_out'].includes(x), adventure_unlocked_now: boolean, adventure_completed: boolean }) && (v.villain_id == null || string(v.villain_id)),
     next_attempt: (v) => v === null || question(v) })
   if (path === '/api/study-packs') return method === 'POST' ? validStudyPack(data) : fields(data, { study_packs: (items) => Array.isArray(items) && items.every(validStudyPack) })
   if (path.startsWith('/api/study-packs/')) return validStudyPack(data)

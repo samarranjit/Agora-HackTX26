@@ -5,11 +5,13 @@ Run from the repository root:
 """
 
 import io
+import json
 import os
 import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 os.environ.setdefault("GEMINI_API_KEY", "test-key-not-a-real-key")
@@ -19,7 +21,15 @@ from fastapi.testclient import TestClient  # noqa: E402
 from pypdf import PdfWriter  # noqa: E402
 
 from ai_module.contract_adapter import ContractQuestion, ContractQuestionBatch, PageIndex  # noqa: E402
-from ai_module.service import Settings, create_app  # noqa: E402
+from ai_module import service as service_module  # noqa: E402
+from ai_module.service import (  # noqa: E402
+    BUSY_MESSAGE,
+    GeminiBusy,
+    GeminiEngine,
+    Settings,
+    create_app,
+    is_overloaded,
+)
 
 KEY = "test-rag-key"
 DOC = "a" * 32
@@ -46,6 +56,7 @@ class FakeEngine:
         self.stores_used = []
         self.fail_index = False
         self.fail_write = False
+        self.busy = False  # every model reports being overloaded
         self.recitation_blocks = 0  # how many calls Gemini's recitation filter blocks first
         self.labels = None  # override Gemini's difficulty labels
         self.count_delta = 0  # return this many extra (or fewer) questions
@@ -63,6 +74,9 @@ class FakeEngine:
     def write_questions(self, prompt, store_names):
         if self.fail_write:
             raise RuntimeError("quota exhausted: secret internal detail")
+        if self.busy:
+            self.prompts.append(prompt)
+            raise GeminiBusy('all models busy')
         if self.recitation_blocks:
             self.recitation_blocks -= 1
             self.prompts.append(prompt)
@@ -297,6 +311,18 @@ class GenerationTests(ServiceTestCase):
         self.assertEqual(set(response.json()), {"error"})
         self.assertNotIn("recitation", response.text)
 
+    def test_when_every_model_is_busy_it_waits_retries_then_says_so_plainly(self):
+        self.engine.busy = True
+        with mock.patch.object(service_module, "OVERLOAD_PAUSE_SECONDS", 0):
+            response = self.generate()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"error": BUSY_MESSAGE})
+        self.assertEqual(len(self.engine.prompts), service_module.GENERATION_ATTEMPTS)
+
+    def test_the_response_names_the_model_that_actually_wrote_the_questions(self):
+        self.engine.last_model = "the-fallback-model"
+        self.assertEqual(self.generate().json()["generation"]["model"], "the-fallback-model")
+
     def test_unknown_documents_and_bad_requests_use_the_error_shape(self):
         unknown = self.generate(document_ids=["c" * 32])
         self.assertEqual(unknown.status_code, 404)
@@ -320,3 +346,84 @@ class GenerationTests(ServiceTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OverloadError(Exception):
+    def __init__(self, message="high demand", status_code=429):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class FakeGeminiClient:
+    """Stands in for ai_module.gemini.client: each model either fails or answers."""
+
+    def __init__(self, behaviour):
+        self.behaviour = behaviour  # model -> exception to raise, or None to answer
+        self.calls = []
+        self.interactions = self
+
+    def create(self, *, model, **_):
+        self.calls.append(model)
+        problem = self.behaviour.get(model)
+        if problem is not None:
+            raise problem
+        question = {
+            "difficulty": 1, "question": "Why?", "options": [{"id": c, "text": c} for c in "abcd"],
+            "correct_option_id": "a", "explanation": "Because.", "source_quote": "a passage",
+        }
+        return mock.Mock(output_text=json.dumps({"questions": [question]}))
+
+
+class ModelFallbackTests(unittest.TestCase):
+    MODELS = ("light", "medium", "other")
+
+    def run_engine(self, behaviour):
+        from ai_module import gemini
+
+        client = FakeGeminiClient(behaviour)
+        engine = GeminiEngine()
+        with mock.patch.object(gemini, "client", client), mock.patch.object(service_module, "MODELS", self.MODELS):
+            try:
+                return engine, client, engine.write_questions("prompt", ["store"]), None
+            except Exception as exc:  # the caller inspects what was raised
+                return engine, client, None, exc
+
+    def test_the_lightest_model_is_used_when_it_works(self):
+        engine, client, batch, error = self.run_engine({})
+        self.assertIsNone(error)
+        self.assertEqual(client.calls, ["light"])
+        self.assertEqual(engine.last_model, "light")
+
+    def test_an_overloaded_model_hands_over_to_the_next_one(self):
+        engine, client, batch, error = self.run_engine({"light": OverloadError()})
+        self.assertIsNone(error)
+        self.assertEqual(client.calls, ["light", "medium"])
+        self.assertEqual(engine.last_model, "medium")
+        self.assertEqual(len(batch.questions), 1)
+
+    def test_a_retired_model_is_skipped_too(self):
+        gone = OverloadError("This model models/x is no longer available to new users.", 404)
+        _, client, _, error = self.run_engine({"light": gone})
+        self.assertIsNone(error)
+        self.assertEqual(client.calls, ["light", "medium"])
+
+    def test_a_request_problem_is_not_blamed_on_the_model(self):
+        _, client, _, error = self.run_engine({"light": ValueError("the schema is wrong")})
+        self.assertIsInstance(error, ValueError)
+        self.assertEqual(client.calls, ["light"])
+
+    def test_when_every_model_is_overloaded_it_reports_busy(self):
+        behaviour = {m: OverloadError() for m in self.MODELS}
+        _, client, _, error = self.run_engine(behaviour)
+        self.assertIsInstance(error, GeminiBusy)
+        self.assertEqual(client.calls, list(self.MODELS))
+
+    def test_which_failures_count_as_overload(self):
+        for exc in (OverloadError(), OverloadError("boom", 503), OverloadError("boom", 500),
+                    RuntimeError("gemini-3.5-flash-lite is currently experiencing high demand"),
+                    RuntimeError("503 UNAVAILABLE"), RuntimeError("RESOURCE_EXHAUSTED"),
+                    OverloadError("Model 'gemini-bogus-9' not found. Please verify the model name.", 404)):
+            self.assertTrue(is_overloaded(exc), exc)
+        for exc in (ValueError("bad schema"), OverloadError("blocked", 400),
+                    RuntimeError("Request blocked due to copyright/recitation content")):
+            self.assertFalse(is_overloaded(exc), exc)

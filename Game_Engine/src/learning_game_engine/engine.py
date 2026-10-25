@@ -175,6 +175,11 @@ class GameEngine:
         return max(0, self._rules.battle_cost - self._state.xp)
 
     @property
+    def practice_shortfall(self) -> int:
+        """XP still needed to pay for a practice question (0 when affordable)."""
+        return max(0, self._rules.practice_cost - self._state.xp)
+
+    @property
     def health_shortfall(self) -> int:
         """Health still needed before a battle may start (0 when healthy enough)."""
         return max(0, self._rules.min_health_to_start_battle - self._state.health)
@@ -227,18 +232,28 @@ class GameEngine:
             raise InvalidAction("Answer the current practice question first.")
         if not question_id:
             raise InvalidAction("A practice question needs an ID.")
+        if self.practice_shortfall > 0:
+            raise InvalidAction(
+                f"A practice question costs {self._rules.practice_cost} XP and you have "
+                f"{self._state.xp}."
+            )
         pending = PendingAttempt(
             attempt_id=_new_attempt_id(), question_id=question_id, difficulty=level
         )
-        self._state = replace(self._state, pending_practice=pending)
+        self._state = replace(
+            self._state,
+            xp=self._state.xp - self._rules.practice_cost,
+            pending_practice=pending,
+        )
         return pending
 
     def submit_practice_result(self, attempt_id: str, correct: bool) -> PracticeResult:
         """Apply a graded practice answer: XP reward, health restore, unlock.
 
-        A correct answer earns XP by difficulty and restores some health (up to
-        the maximum). A wrong answer changes neither XP nor health. `correct`
-        must be a real boolean; other values are rejected before any change.
+        A correct answer earns XP by difficulty (or `practice_correct_xp` when
+        set) and restores some health (up to the maximum). A wrong answer
+        changes neither XP nor health. `correct` must be a real boolean; other
+        values are rejected before any change.
         """
         graded = _require_boolean(correct)
         self._require_scene(Scene.PRACTICE)
@@ -246,7 +261,14 @@ class GameEngine:
         if pending is None or pending.attempt_id != attempt_id:
             raise InvalidAction(self._unexpected_attempt_message(attempt_id))
 
-        xp_delta = self._rules.correct_reward(pending.difficulty) if graded else 0
+        if graded:
+            xp_delta = (
+                self._rules.practice_correct_xp
+                if self._rules.practice_correct_xp is not None
+                else self._rules.correct_reward(pending.difficulty)
+            )
+        else:
+            xp_delta = 0
         xp = self._state.xp + xp_delta
         health = self._state.health
         if graded:
@@ -331,7 +353,8 @@ class GameEngine:
     def submit_battle_result(self, attempt_id: str, correct: bool) -> BattleResult:
         """Apply a graded battle answer.
 
-        A correct answer earns XP by difficulty. A wrong answer costs XP and
+        A correct answer earns XP by difficulty unless `award_battle_xp` is
+        false. A wrong answer costs XP and
         health by difficulty, each clamped at zero. If health reaches zero the
         battle ends at once as a loss (KNOCKED_OUT) and the player returns to
         the playground; the entry cost is not refunded. Otherwise every
@@ -346,10 +369,19 @@ class GameEngine:
 
         difficulty = battle.current_question.difficulty
         if graded:
-            xp = self._state.xp + self._rules.correct_reward(difficulty)
+            reward = (
+                self._rules.correct_reward(difficulty)
+                if self._rules.award_battle_xp
+                else 0
+            )
+            xp = self._state.xp + reward
             health = self._state.health
         else:
-            xp_loss = self._rules.battle_wrong_xp_per_difficulty * difficulty
+            xp_loss = (
+                self._rules.battle_wrong_xp
+                if self._rules.battle_wrong_xp is not None
+                else self._rules.battle_wrong_xp_per_difficulty * difficulty
+            )
             health_loss = self._rules.battle_wrong_health_per_difficulty * difficulty
             xp = max(0, self._state.xp - xp_loss)
             health = max(0, self._state.health - health_loss)

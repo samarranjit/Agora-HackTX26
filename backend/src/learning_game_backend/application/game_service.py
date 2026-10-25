@@ -25,7 +25,7 @@ import uuid
 from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Any
 
@@ -165,24 +165,29 @@ class GameService:
         if row is None:
             raise AppError(404, "player_not_found", "No game state for this account.")
         try:
-            state = state_from_dict(json.loads(row["state_json"]))
+            stored = state_from_dict(json.loads(row["state_json"]))
+            if (row["xp"], row["health"], bool(row["adventure_unlocked"])) != (
+                stored.xp,
+                stored.health,
+                stored.adventure_unlocked,
+            ):
+                raise AppError(
+                    500, "corrupt_state", "Stored game state is inconsistent."
+                )
+            state = stored
             engine = GameEngine(
                 state,
                 slide_count=self.campaign.slide_count,
                 villain_ids=self.campaign.villain_ids,
                 rules=self.rules,
             )
+        except AppError:
+            raise
         except (StateCodecError, InvalidState, ValueError) as exc:
             logger.error("Stored state for a player is invalid: %s", exc)
             raise AppError(
                 500, "corrupt_state", "Stored game state is invalid."
             ) from None
-        if (row["xp"], row["health"], bool(row["adventure_unlocked"])) != (
-            state.xp,
-            state.health,
-            state.adventure_unlocked,
-        ):
-            raise AppError(500, "corrupt_state", "Stored game state is inconsistent.")
         return Player(engine, row["state_version"], row["updated_at"])
 
     def _save_player(
@@ -759,11 +764,21 @@ class GameService:
                     "Generate a practice question set from one of your PDFs first.",
                 )
             engine = player.engine
+            if engine.practice_shortfall:
+                raise AppError(
+                    409,
+                    "insufficient_xp",
+                    f"A practice question costs {self.rules.practice_cost} XP. "
+                    f"Earn {engine.practice_shortfall} more XP first.",
+                )
             if engine.state.scene is not Scene.PRACTICE:
                 engine.go_to(Scene.PRACTICE)
-            pending = engine.present_practice_question(
-                question["id"], question["difficulty"]
-            )
+            try:
+                pending = engine.present_practice_question(
+                    question["id"], question["difficulty"]
+                )
+            except InvalidAction as exc:
+                raise AppError(409, "action_not_allowed", str(exc)) from None
             self._insert_attempt(
                 conn,
                 account.user_id,
@@ -1074,6 +1089,30 @@ class GameService:
                 "correct_xp_by_difficulty": list(self.rules.correct_xp_by_difficulty),
             },
         }
+
+    def reset_progress(self, account: Account) -> dict[str, Any]:
+        """Reset XP, guardians, and answered questions. The PDF stays."""
+        with self.connection() as conn, db.transaction(conn):
+            player = self._load_player(conn, account.user_id)
+            conn.execute(
+                "DELETE FROM submissions WHERE owner_id = ?", (account.user_id,)
+            )
+            conn.execute(
+                "DELETE FROM battle_starts WHERE owner_id = ?", (account.user_id,)
+            )
+            conn.execute("DELETE FROM attempts WHERE owner_id = ?", (account.user_id,))
+            engine = GameEngine.new_game(
+                account.username,
+                slide_count=self.campaign.slide_count,
+                villain_ids=self.campaign.villain_ids,
+                rules=self.rules,
+            )
+            self._save_player(
+                conn,
+                account.user_id,
+                Player(engine, player.state_version, player.updated_at),
+            )
+        return self.get_state(account)
 
     def get_status(self, account: Account) -> dict[str, Any]:
         """The small HUD view. The database stays the source of truth."""

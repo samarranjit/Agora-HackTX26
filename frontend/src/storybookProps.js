@@ -1,11 +1,11 @@
 import * as THREE from 'three'
 
-function sculptor(root, colors) {
+function sculptor(root, colors, { orb = 1, sides = 8 } = {}) {
   const materials = Object.fromEntries(Object.entries(colors).map(([key, color]) => [key, new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.72 })]))
   root.userData.ownedMaterials = Object.values(materials)
-  const sphere = new THREE.IcosahedronGeometry(1, 1)
+  const sphere = orb >= 2 ? new THREE.SphereGeometry(1, 24, 18) : new THREE.IcosahedronGeometry(1, orb)
   return (shape, material, position, scale = [1, 1, 1], rotation = [0, 0, 0], parent = root) => {
-    const geometry = shape === 'orb' ? sphere : shape === 'cone' ? new THREE.ConeGeometry(1, 1, 8) : shape === 'ring' ? new THREE.TorusGeometry(1, 0.14, 6, 18) : shape === 'cylinder' ? new THREE.CylinderGeometry(1, 1, 1, 8) : new THREE.BoxGeometry(1, 1, 1)
+    const geometry = shape === 'orb' ? sphere : shape === 'cone' ? new THREE.ConeGeometry(1, 1, sides) : shape === 'ring' ? new THREE.TorusGeometry(1, 0.14, 8, 24) : shape === 'cylinder' ? new THREE.CylinderGeometry(1, 1, 1, sides) : new THREE.BoxGeometry(1, 1, 1)
     const mesh = new THREE.Mesh(geometry, materials[material])
     mesh.position.set(...position); mesh.scale.set(...scale); mesh.rotation.set(...rotation)
     mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh)
@@ -46,56 +46,82 @@ export function createFairytaleItem(id) {
   return root
 }
 
-export function createStoryDragon() {
-  const root = new THREE.Group()
-  root.name = 'Storykeeper Dragon'
-  const put = sculptor(root, { plum: 0x695688, belly: 0xd5b48b, wing: 0xa95c7f, horn: 0xffdda1, eye: 0x241e34, gold: 0xf2c164 })
-  put('orb', 'plum', [0, 1.6, 0], [1.5, 1.6, 2])
-  put('orb', 'belly', [0, 1.55, 1.1], [0.9, 1.1, 0.9])
-  const head = new THREE.Group(); head.position.set(0, 3, 1.3); root.add(head)
-  put('orb', 'plum', [0, 0, 0], [1, 0.85, 0.85], [0, 0, 0], head)
-  put('orb', 'plum', [0, -0.25, 0.8], [0.85, 0.45, 0.8], [0, 0, 0], head)
-  for (const side of [-1, 1]) {
-    put('cone', 'horn', [side * 0.65, 0.9, -0.1], [0.17, 1, 0.17], [0.25, 0, -side * 0.3], head)
-    put('orb', 'gold', [side * 0.64, 0.15, 0.59], [0.26, 0.3, 0.12], [0, 0, 0], head)
-    put('orb', 'eye', [side * 0.63, 0.14, 0.7], [0.08, 0.18, 0.05], [0, 0, 0], head)
-    put('orb', 'plum', [side * 1.25, 0.55, 0.65], [0.5, 0.6, 0.8])
-    for (let i = 0; i < 3; i++) put('cone', 'horn', [side * 1.25 + (i - 1) * 0.2, 0.3, 1.37], [0.09, 0.35, 0.09], [Math.PI / 2, 0, 0])
-  }
-  const wings = []
-  for (const side of [-1, 1]) {
-    const wing = new THREE.Group(); wing.position.set(side * 1.1, 2.3, -0.2); root.add(wing)
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, side * 2.8, 2.4, -0.5, side * 2.3, -0.3, -1.2, 0, 0, 0, side * 2.3, -0.3, -1.2, side * 0.5, -0.6, -1.9], 3))
-    geometry.computeVertexNormals()
-    const membrane = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xaa6488, side: THREE.DoubleSide, flatShading: true, roughness: 0.9 }))
-    membrane.castShadow = true; wing.add(membrane); wings.push(wing)
-    put('cone', 'plum', [side * 1.3, 1.2, -0.25], [0.14, 3.2, 0.14], [0, 0, -side * 0.85], wing)
-  }
-  const tail = new THREE.Group(); tail.position.set(0, 1, -1.5); root.add(tail)
-  put('cone', 'plum', [0, -0.3, -1.4], [0.6, 3.2, 0.6], [-Math.PI / 2, 0, 0], tail)
-  for (let i = 0; i < 4; i++) put('cone', 'gold', [0, 2.8 - i * 0.2, -0.2 - i * 0.48], [0.2, 0.55, 0.2])
-  return { root, update(time, won = false) { head.rotation.y = Math.sin(time * 0.6) * 0.12; head.position.y = 3 + Math.sin(time * 1.5) * 0.05; wings.forEach((w, i) => { w.rotation.z = Math.sin(time * 0.8) * 0.08 * (i ? 1 : -1) }); tail.rotation.y = Math.sin(time) * 0.12; root.rotation.x = won ? -0.08 : 0 } }
-}
+// The Storykeeper Dragon lives in its own module: it is a much larger, bending model.
+export { createStoryDragon } from './dragonModel.js'
 
 export function createBigBadWolf() {
   const root = new THREE.Group(); root.name = 'Big Bad Wolf'
-  const put = sculptor(root, { fur: 0x737f91, light: 0xb5bac4, dark: 0x313549, eye: 0xf4cd79, teeth: 0xffedcf, red: 0x963f58 })
-  put('orb', 'fur', [0, 1, 0], [0.64, 0.66, 1.15])
-  const head = new THREE.Group(); head.position.set(0, 1.65, 0.85); root.add(head)
-  put('orb', 'fur', [0, 0, 0], [0.6, 0.55, 0.55], [0, 0, 0], head)
-  put('orb', 'light', [0, -0.16, 0.55], [0.33, 0.25, 0.6], [0, 0, 0], head)
-  put('orb', 'dark', [0, -0.08, 1.03], [0.2, 0.16, 0.16], [0, 0, 0], head)
-  for (const side of [-1, 1]) {
-    put('cone', 'fur', [side * 0.4, 0.6, -0.1], [0.24, 0.8, 0.2], [0, 0, -side * 0.2], head)
-    put('orb', 'eye', [side * 0.36, 0.12, 0.38], [0.13, 0.15, 0.08], [0, 0, 0], head)
-    put('orb', 'dark', [side * 0.35, 0.12, 0.45], [0.045, 0.09, 0.03], [0, 0, 0], head)
-    put('cone', 'teeth', [side * 0.21, -0.36, 0.7], [0.07, 0.23, 0.07], [Math.PI, 0, 0], head)
-    for (const z of [-0.65, 0.65]) { put('cylinder', 'fur', [side * 0.43, 0.42, z], [0.15, 0.8, 0.15]); put('orb', 'dark', [side * 0.43, 0.14, z + 0.14], [0.2, 0.13, 0.34]) }
+  const put = sculptor(root, {
+    fur: 0x9aa3ad, dusk: 0x7b848f, mane: 0x5e666f, belly: 0xc0c6ce,
+    muscle: 0x8b949e, scar: 0x8a2230, gum: 0x54141c, teeth: 0xf4ebd4,
+    claw: 0xe4d6bc, nose: 0x2a2e34, eye: 0xf7f4ec, slit: 0x1a1c22,
+  }, { orb: 2, sides: 16 })
+  const body = new THREE.Group(); root.add(body)
+  put('orb', 'fur', [0, 1.28, 0.05], [0.58, 0.5, 2.05], [0.08, 0, 0], body)
+  put('orb', 'belly', [0, 1.02, 0.18], [0.36, 0.28, 1.55], [0.14, 0, 0], body)
+  put('orb', 'muscle', [0, 1.38, 0.72], [0.52, 0.38, 0.55], [0.28, 0, 0], body)
+  put('orb', 'mane', [0, 1.52, 0.15], [0.42, 0.32, 0.85], [0.18, 0, 0], body)
+  for (let i = 0; i < 5; i++) {
+    put('cone', 'mane', [0, 1.68 - i * 0.04, 0.55 - i * 0.38], [0.07 + i * 0.01, 0.38 - i * 0.03, 0.07], [0.6 + i * 0.08, 0, 0], body)
   }
-  put('cone', 'fur', [0, 1.05, -1.55], [0.3, 1.6, 0.3], [-1.1, 0, 0])
-  put('ring', 'red', [0, 1.4, 0.63], [0.5, 0.5, 0.4], [Math.PI / 2.5, 0, 0])
-  return { root, update(time) { head.rotation.y = Math.sin(time * 0.75) * 0.1; head.position.y = 1.65 + Math.sin(time * 1.8) * 0.04 } }
+  put('orb', 'scar', [0.16, 1.36, 0.62], [0.05, 0.03, 0.38], [0.35, 0.25, 0.15], body)
+  for (const side of [-1, 1]) {
+    put('orb', 'muscle', [side * 0.42, 1.42, 0.78], [0.28, 0.26, 0.32], [0.15, 0, 0], body)
+    put('orb', 'muscle', [side * 0.34, 1.22, 0.12], [0.16, 0.14, 0.28], [0, 0, 0], body)
+    put('orb', 'muscle', [side * 0.4, 1.4, -0.82], [0.32, 0.3, 0.38], [-0.1, 0, 0], body)
+    put('cylinder', 'muscle', [side * 0.36, 0.92, 0.98], [0.15, 0.62, 0.16], [0.22, 0, side * 0.06], body)
+    put('cylinder', 'fur', [side * 0.4, 0.42, 1.12], [0.09, 0.72, 0.1], [0.12, 0, side * 0.04], body)
+    put('orb', 'dusk', [side * 0.42, 0.12, 1.28], [0.14, 0.09, 0.26], [0, 0, 0], body)
+    for (const x of [-0.07, 0, 0.07]) put('cone', 'claw', [side * 0.42 + x, 0.05, 1.46], [0.032, 0.17, 0.032], [1.25, 0, 0], body)
+    put('cylinder', 'muscle', [side * 0.34, 0.9, -0.88], [0.17, 0.68, 0.18], [-0.16, 0, -side * 0.05], body)
+    put('cylinder', 'fur', [side * 0.38, 0.4, -0.68], [0.1, 0.74, 0.11], [-0.08, 0, -side * 0.04], body)
+    put('orb', 'dusk', [side * 0.4, 0.11, -0.5], [0.15, 0.09, 0.28], [0, 0, 0], body)
+    for (const x of [-0.07, 0, 0.07]) put('cone', 'claw', [side * 0.4 + x, 0.05, -0.32], [0.032, 0.15, 0.032], [1.15, 0, 0], body)
+  }
+  const head = new THREE.Group(); head.position.set(0, 1.72, 1.62); body.add(head)
+  put('orb', 'fur', [0, 0.06, 0], [0.58, 0.5, 0.52], [0, 0, 0], head)
+  put('orb', 'mane', [0, 0.36, -0.16], [0.52, 0.32, 0.38], [-0.35, 0, 0], head)
+  for (const side of [-1, 1]) put('orb', 'fur', [side * 0.32, 0.02, 0.18], [0.2, 0.18, 0.2], [0, 0, 0], head)
+  put('orb', 'fur', [0, -0.02, 0.36], [0.4, 0.26, 0.34], [0, 0, 0], head)
+  put('cylinder', 'dusk', [0, -0.05, 0.78], [0.22, 0.7, 0.13], [Math.PI / 2, 0, 0], head)
+  put('orb', 'dusk', [0, -0.05, 1.1], [0.2, 0.12, 0.14], [0, 0, 0], head)
+  put('box', 'nose', [0, 0.01, 1.22], [0.18, 0.09, 0.05], [0, 0, 0], head)
+  put('orb', 'scar', [0.14, 0.04, 0.7], [0.035, 0.02, 0.36], [0.1, 0.3, 0.08], head)
+  for (const side of [-1, 1]) {
+    const ear = put('cone', 'mane', [side * 0.38, 0.62, -0.12], [0.16, 0.78, 0.11], [0.15, 0, -side * 0.55], head)
+    ear.rotation.x = -0.55
+    put('cone', 'scar', [side * 0.38, 0.54, -0.02], [0.06, 0.36, 0.04], [0.2, 0, -side * 0.55], head)
+    const eye = put('orb', 'eye', [side * 0.26, 0.14, 0.4], [0.15, 0.12, 0.07], [0, 0, 0], head)
+    eye.material.emissive.setHex(0xfff6e8)
+    eye.material.emissiveIntensity = 0.85
+    put('orb', 'slit', [side * 0.26, 0.14, 0.46], [0.025, 0.1, 0.025], [0, 0, 0], head)
+    put('orb', 'mane', [side * 0.24, 0.24, 0.32], [0.12, 0.05, 0.06], [0, 0, side * 0.2], head)
+    put('cone', 'teeth', [side * 0.14, -0.18, 0.95], [0.04, 0.2, 0.04], [2.85, 0, side * 0.08], head)
+    put('cone', 'teeth', [side * 0.18, -0.16, 0.72], [0.035, 0.16, 0.035], [2.9, 0, side * 0.14], head)
+  }
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.18, 0.38); head.add(jaw)
+  put('cylinder', 'dusk', [0, -0.06, 0.5], [0.18, 0.68, 0.07], [1.68, 0, 0], jaw)
+  put('orb', 'dusk', [0, -0.05, 0.82], [0.16, 0.07, 0.1], [0, 0, 0], jaw)
+  put('orb', 'gum', [0, 0.03, 0.5], [0.26, 0.045, 0.48], [0, 0, 0], jaw)
+  for (const side of [-1, 1]) {
+    put('cone', 'teeth', [side * 0.12, 0.06, 0.7], [0.038, 0.18, 0.038], [0.12, 0, side * 0.08], jaw)
+    put('cone', 'teeth', [side * 0.16, 0.04, 0.5], [0.03, 0.14, 0.03], [0.16, 0, side * 0.12], jaw)
+  }
+  const tail = new THREE.Group(); tail.position.set(0, 1.15, -1.85); body.add(tail)
+  put('cone', 'mane', [0, 0.04, -0.95], [0.16, 2.05, 0.16], [-1.25, 0, 0], tail)
+  put('cone', 'fur', [0, -0.18, -1.7], [0.1, 0.85, 0.1], [-1.45, 0, 0], tail)
+  return {
+    root,
+    update(time) {
+      const growl = 0.5 + 0.5 * Math.sin(time * 1.65)
+      body.position.y = Math.sin(time * 2.1) * 0.025
+      head.rotation.y = Math.sin(time * 0.42) * 0.07
+      head.rotation.x = -0.16 + Math.sin(time * 1.05) * 0.045
+      jaw.rotation.x = 0.22 + growl * 0.2
+      tail.rotation.y = Math.sin(time * 1.25) * 0.1
+      tail.rotation.x = 0.15 + Math.sin(time * 1.9) * 0.06
+    },
+  }
 }
 
 export function createStoryPrincess() {

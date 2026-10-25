@@ -11,6 +11,21 @@ class SettingsTests(unittest.TestCase):
         self.assertIs(settings.game_master_mode, GameMasterMode.DISABLED)
         self.assertEqual(settings.cors_origins, ())
         self.assertTrue(settings.database_path.name.endswith(".sqlite3"))
+        self.assertEqual(settings.starting_xp, 100)
+        self.assertEqual(settings.battle_cost, 0)
+        self.assertFalse(settings.award_battle_xp)
+        self.assertEqual(settings.practice_cost, 50)
+        self.assertEqual(settings.practice_correct_xp, 50)
+        self.assertEqual(settings.battle_wrong_xp, 100)
+        self.assertEqual(Settings().starting_xp, 0)
+        self.assertEqual(Settings().battle_cost, 30)
+        self.assertTrue(Settings().award_battle_xp)
+        self.assertEqual(Settings().practice_cost, 0)
+        self.assertIsNone(Settings().practice_correct_xp)
+        self.assertIsNone(Settings().battle_wrong_xp)
+        self.assertEqual(
+            Settings.from_env({"LEARNING_GAME_STARTING_XP": "0"}).starting_xp, 0
+        )
 
     def test_environment_values_are_parsed(self) -> None:
         settings = Settings.from_env(
@@ -72,6 +87,7 @@ class SettingsTests(unittest.TestCase):
             {"LEARNING_GAME_MAX_UPLOAD_BYTES": "lots"},
             {"LEARNING_GAME_MAX_UPLOAD_BYTES": "0"},
             {"LEARNING_GAME_ALLOW_REGISTRATION": "maybe"},
+            {"LEARNING_GAME_STARTING_XP": "-1"},
         ):
             with self.subTest(env=env), self.assertRaises(ConfigError):
                 Settings.from_env(env)

@@ -129,6 +129,25 @@ class PracticeTests(unittest.TestCase):
                 self.assertEqual(engine.state.xp, reward)
                 self.assertEqual(engine.state.practice_position, 1)
 
+    def test_practice_cost_and_flat_reward(self) -> None:
+        engine = new_engine(
+            Rules(starting_xp=100, practice_cost=50, practice_correct_xp=50)
+        )
+        engine.go_to(Scene.PRACTICE)
+        pending = engine.present_practice_question("practice-1", 1)
+        self.assertEqual(engine.state.xp, 50)
+        result = engine.submit_practice_result(pending.attempt_id, True)
+        self.assertEqual(result.xp_delta, 50)
+        self.assertEqual(engine.state.xp, 100)
+
+    def test_practice_is_refused_when_the_entry_cost_cannot_be_paid(self) -> None:
+        engine = new_engine(Rules(practice_cost=50))
+        engine.go_to(Scene.PRACTICE)
+        with self.assertRaisesRegex(InvalidAction, "50 XP"):
+            engine.present_practice_question("practice-1", 1)
+        self.assertEqual(engine.state.xp, 0)
+        self.assertIsNone(engine.state.pending_practice)
+
     def test_incorrect_answer_changes_neither_xp_nor_health(self) -> None:
         engine = new_engine(Rules(starting_health=50))
         answer_practice(engine, correct=True)
@@ -389,6 +408,14 @@ class BattleTests(unittest.TestCase):
 
 
 class BattleEconomyTests(unittest.TestCase):
+    def test_victory_can_leave_xp_unchanged(self) -> None:
+        engine = new_engine(Rules(award_battle_xp=False, battle_cost=0))
+        earn(engine, 100)
+        before = engine.state.xp
+        result = fight(engine, WIN)
+        self.assertEqual(result.outcome, BattleOutcome.WON)
+        self.assertEqual((result.xp_delta, engine.state.xp), (0, before))
+
     def test_correct_battle_answer_earns_xp_by_difficulty(self) -> None:
         engine = new_engine()
         earn(engine, 100)
@@ -396,6 +423,15 @@ class BattleEconomyTests(unittest.TestCase):
         result = answer_battle(engine, True)
         self.assertEqual((result.xp_delta, result.health_delta), (25, 0))
         self.assertEqual(engine.state.xp, 95)
+
+    def test_wrong_guardian_answer_can_cost_a_flat_amount(self) -> None:
+        engine = new_engine(
+            Rules(starting_xp=100, battle_cost=0, battle_wrong_xp=100)
+        )
+        start_next_battle(engine, difficulty=1)
+        result = answer_battle(engine, False)
+        self.assertEqual(result.xp_delta, -100)
+        self.assertEqual(engine.state.xp, 0)
 
     def test_wrong_battle_answer_costs_xp_and_health_by_difficulty(self) -> None:
         engine = new_engine()

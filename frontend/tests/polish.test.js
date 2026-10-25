@@ -1,11 +1,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import * as THREE from 'three'
 import { createWalkFeel } from '../src/walkFeel.js'
 import { createStoryAudio } from '../src/audio/storyAudio.js'
 import { createMagicEffects } from '../src/magicEffects.js'
 import { createForestScene, createCastleHallScene } from '../src/forestScene.js'
 import { createForestView } from '../src/game/forestView.js'
+import { forestHeight } from '../src/forestLayout.js'
+
+function atEncounter(run, id) {
+  const spot = run.layout.encounters.find((enemy) => enemy.id === id)
+  return { x: spot.x, z: spot.z, y: forestHeight(spot.x, spot.z, run.layout) + 1.6 }
+}
 
 test('walk feel follows actual distance, settles without drift, and disables bob off the ground', () => {
   const feel = createWalkFeel()
@@ -65,6 +72,9 @@ test('audio requires a trusted gesture, limits repeats, mutes all branches, and 
   assert.ok(master.gain.value > 0)
   assert.equal(sound.play('footstep'), true)
   assert.equal(sound.play('footstep'), false)
+  assert.equal(sound.play('goblin'), true)
+  assert.equal(sound.play('wolf'), true)
+  assert.equal(sound.play('goblin'), false)
   context.currentTime += 0.3
   assert.equal(sound.play('footstep'), true)
   sound.setMuted(true); assert.equal(master.gain.value, 0); assert.equal(sound.play('collect'), false)
@@ -127,6 +137,37 @@ test('all item visuals spin with distinct float phases; collection is visual onl
   handle.dispose()
 })
 
+test('a defeated goblin or wolf stays visible while burning, then is gone', () => {
+  const run = { ...createForestView({ seed: 'flames' }), summonableEnemyIds: ['goblin', 'wolf'] }
+  const handle = createForestScene({ layout: run.layout })
+  const appeared = []
+  handle.update(0.1, { forestRun: run, onGuardianAppear: (id) => appeared.push(id) })
+  const goblin = handle.scene.getObjectByName('Forest Goblin')
+  const wolf = handle.scene.getObjectByName('Big Bad Wolf')
+  assert.equal(goblin.visible, false)
+  assert.equal(wolf.visible, false)
+  assert.deepEqual(appeared, [])
+  handle.update(0.1, { forestRun: run, playerPosition: atEncounter(run, 'goblin'), onGuardianAppear: (id) => appeared.push(id) })
+  assert.equal(goblin.visible, true)
+  assert.equal(wolf.visible, false)
+  assert.deepEqual(appeared, ['goblin'])
+  handle.update(0.1, { forestRun: run, playerPosition: atEncounter(run, 'goblin'), onGuardianAppear: (id) => appeared.push(id) })
+  handle.update(0.1, { forestRun: run, playerPosition: atEncounter(run, 'wolf'), onGuardianAppear: (id) => appeared.push(id) })
+  assert.equal(wolf.visible, true)
+  assert.deepEqual(appeared, ['goblin', 'wolf'])
+  const burning = { ...run, defeatedEnemyIds: ['goblin'] }
+  handle.update(0.04, { forestRun: burning, playerPosition: atEncounter(run, 'wolf') })
+  assert.equal(goblin.visible, true, 'the goblin burns instead of vanishing')
+  const sparks = handle.scene.getObjectByName('Storywood sparkles')
+  assert.ok(sparks.geometry.attributes.color.array.some((value) => value > 0))
+  handle.update(2, { forestRun: burning, playerPosition: atEncounter(run, 'wolf') })
+  assert.equal(goblin.visible, false)
+  handle.update(0.05, { forestRun: { ...burning, defeatedEnemyIds: ['goblin', 'wolf'] }, reducedMotion: true, playerPosition: atEncounter(run, 'wolf') })
+  handle.update(0.35, { forestRun: { ...burning, defeatedEnemyIds: ['goblin', 'wolf'] }, reducedMotion: true, playerPosition: atEncounter(run, 'wolf') })
+  assert.equal(wolf.visible, false)
+  handle.dispose()
+})
+
 test('dragon completion sparkles are emitted once, expire, and do not change progress', () => {
   const handle = createCastleHallScene(), run = createForestView()
   handle.update(1, { forestRun: run }) // Finish the entrance cue.
@@ -139,4 +180,11 @@ test('dragon completion sparkles are emitted once, expire, and do not change pro
   assert.ok(points.geometry.attributes.color.array.every((v) => v === 0))
   assert.equal(victory.xp, 100)
   handle.dispose(); handle.dispose()
+})
+
+test('paused HUD keeps the XP bar at the bottom left', async () => {
+  const forest = await readFile(new URL('../src/forest.css', import.meta.url), 'utf8')
+  const adventure = await readFile(new URL('../src/adventure.css', import.meta.url), 'utf8')
+  assert.doesNotMatch(forest, /\.hud-paused \.adventure-vitals/)
+  assert.match(adventure, /\.adventure-vitals \{[^}]*left: 28px;[^}]*bottom: 26px/)
 })

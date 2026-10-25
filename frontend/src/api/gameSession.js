@@ -108,7 +108,8 @@ export function createGameSession({ baseUrl, fetchImpl, timeoutMs } = {}) {
     }),
     practice: () => snapshot.attempt ? Promise.resolve(snapshot.attempt) : begin('practice', '/api/practice/attempts', { question_set_id: snapshot.pack?.practice.question_set_id }, false),
     battle: (villainId) => {
-      if (villainId && snapshot.player?.villains.find((v) => v.status === 'current')?.villain_id !== villainId) return exclusive(() => { throw new Error('This guardian is not available yet. Finish the current guardian first.') })
+      const current = snapshot.player?.villains?.find((v) => v.status === 'current')?.villain_id
+      if (villainId && current && current !== villainId) return exclusive(() => { throw new Error('This guardian is not available yet. Finish the current guardian first.') })
       return begin('battle', '/api/adventure/battles', { question_set_id: snapshot.pack?.adventure.question_set_id })
     },
     answer: (answer) => {
@@ -116,5 +117,31 @@ export function createGameSession({ baseUrl, fetchImpl, timeoutMs } = {}) {
       return begin('answer', '/api/attempts/' + encodeURIComponent(snapshot.attempt.attempt_id) + '/answer', { answer })
     },
     retry: () => exclusive(() => journal ? execute(journal) : refresh()),
+    restart: () => exclusive(async () => {
+      if (!credentials) throw new Error('Please sign in again.')
+      mutationVersion++
+      mutating = true
+      try {
+        const data = await api.restart()
+        journal = null
+        publish({
+          attempt: null,
+          result: null,
+          unresolved: null,
+          error: null,
+          player: data,
+          status: {
+            xp: data.xp,
+            health: data.health,
+            max_health: data.max_health,
+            state_version: data.state_version,
+            adventure_unlocked: data.adventure_unlocked,
+            adventure_completed: data.adventure_completed,
+            location: data.location,
+          },
+        })
+        return data
+      } finally { mutating = false }
+    }),
   }
 }

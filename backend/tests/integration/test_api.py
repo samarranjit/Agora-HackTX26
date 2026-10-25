@@ -41,6 +41,7 @@ class AuthenticationTests(ApiTestCase):
             ("get", "/api/me/status"),
             ("get", "/api/me/active-attempt"),
             ("get", "/api/me/export"),
+            ("post", "/api/me/restart"),
             ("post", "/api/practice/attempts"),
             ("post", "/api/adventure/battles"),
             ("post", "/api/documents"),
@@ -683,6 +684,48 @@ class AdventureTests(ApiTestCase):
         self.assertEqual(
             [v["status"] for v in state["villains"]], ["completed", "current", "locked"]
         )
+
+    def test_restart_resets_guardians_and_keeps_the_pdf(self) -> None:
+        headers = self.register()
+        self.question_set(headers, "practice", 5)
+        first_practice = self.client.post(
+            "/api/practice/attempts", headers=headers, json={}
+        ).json()["attempt"]
+        self.answer(headers, first_practice)
+        for _ in range(4):
+            self.practice(headers)
+        self.question_set(headers, "adventure", 3)
+        first_battle = self.start_battle(headers).json()["attempt"]
+        self.answer(headers, first_battle)
+        self.assertEqual(self.state(headers)["villains"][0]["status"], "completed")
+        packs = self.client.get("/api/study-packs", headers=headers).json()
+        response = self.client.post("/api/me/restart", headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["xp"], 0)
+        self.assertEqual(body["practice_answered"], 0)
+        self.assertEqual(
+            [v["status"] for v in body["villains"]], ["current", "locked", "locked"]
+        )
+        state = self.state(headers)
+        self.assertEqual(state["xp"], 0)
+        self.assertEqual(state["practice_answered"], 0)
+        self.assertEqual(
+            [v["status"] for v in state["villains"]], ["current", "locked", "locked"]
+        )
+        self.assertIsNone(state["pending_attempt_id"])
+        self.assertEqual(
+            self.client.get("/api/study-packs", headers=headers).json(), packs
+        )
+        replay_practice = self.client.post(
+            "/api/practice/attempts", headers=headers, json={}
+        ).json()["attempt"]
+        self.assertEqual(replay_practice["question_id"], first_practice["question_id"])
+        self.answer(headers, replay_practice)
+        for _ in range(4):
+            self.practice(headers)
+        replay_battle = self.start_battle(headers).json()["attempt"]
+        self.assertEqual(replay_battle["question_id"], first_battle["question_id"])
 
     def test_wrong_answers_cost_xp_and_health_by_difficulty(self) -> None:
         headers = self.register()

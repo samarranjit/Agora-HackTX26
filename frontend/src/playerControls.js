@@ -17,6 +17,7 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
   let capturedPointerId = null
   let disposed = false
   let lockRequest = null
+  let releasingLock = false
 
   const clearKeys = () => {
     Object.keys(keys).forEach((key) => { keys[key] = false })
@@ -39,9 +40,13 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
       canvas.focus()
       if (!wasActive && requestLock) lockMouse()
     }
-    else if (doc.pointerLockElement === canvas) doc.exitPointerLock()
+    else if (doc.pointerLockElement === canvas) {
+      releasingLock = true
+      doc.exitPointerLock()
+    }
   }
   const suspend = (callback) => {
+    releasingLock = true
     setActive(false)
     callback()
   }
@@ -89,9 +94,11 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
     if (locked) releaseDrag()
     onLockChange(locked)
     if (!locked) {
+      const skipPause = releasingLock
+      releasingLock = false
       releaseDrag()
       clearKeys()
-      if (wasLocked && active) suspend(onPause)
+      if (wasLocked && active && !skipPause) suspend(onPause)
     }
   }
   const onPointerLockError = () => {

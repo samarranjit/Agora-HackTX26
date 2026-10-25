@@ -55,6 +55,14 @@ class Settings:
     game_master_url: str | None = None
     game_master_api_key: str | None = field(default=None, repr=False)
     game_master_timeout_seconds: float = 60.0
+    # Temporary demo defaults for the live server (from_env). Tests construct
+    # Settings() directly so they still exercise the practice grind and fees.
+    starting_xp: int = 0
+    battle_cost: int = 30
+    award_battle_xp: bool = True
+    practice_cost: int = 0
+    practice_correct_xp: int | None = None
+    battle_wrong_xp: int | None = None
 
     @property
     def database_path(self) -> Path:
@@ -98,6 +106,14 @@ class Settings:
             game_master_timeout_seconds=float(
                 _int(get, "GAME_MASTER_TIMEOUT_SECONDS", 60)
             ),
+            starting_xp=_nonneg_int(get, "LEARNING_GAME_STARTING_XP", 100),
+            battle_cost=_nonneg_int(get, "LEARNING_GAME_BATTLE_COST", 0),
+            award_battle_xp=_bool(get, "LEARNING_GAME_AWARD_BATTLE_XP", False),
+            practice_cost=_nonneg_int(get, "LEARNING_GAME_PRACTICE_COST", 50),
+            practice_correct_xp=_nonneg_int(
+                get, "LEARNING_GAME_PRACTICE_CORRECT_XP", 50
+            ),
+            battle_wrong_xp=_nonneg_int(get, "LEARNING_GAME_BATTLE_WRONG_XP", 100),
         )
 
 
@@ -118,6 +134,14 @@ def _origins(text: str | None) -> tuple[str, ...]:
 
 
 def _int(get: _Getter, name: str, default: int) -> int:
+    return _parse_int(get, name, default, minimum=1)
+
+
+def _nonneg_int(get: _Getter, name: str, default: int) -> int:
+    return _parse_int(get, name, default, minimum=0)
+
+
+def _parse_int(get: _Getter, name: str, default: int, minimum: int) -> int:
     text = get(name)
     if text is None:
         return default
@@ -125,8 +149,8 @@ def _int(get: _Getter, name: str, default: int) -> int:
         value = int(text)
     except ValueError:
         raise ConfigError(f"{name} must be a whole number") from None
-    if value < 1:
-        raise ConfigError(f"{name} must be at least 1")
+    if value < minimum:
+        raise ConfigError(f"{name} must be at least {minimum}")
     return value
 
 

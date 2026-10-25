@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import contract_adapter as adapter
-from .config import MODEL
+from .config import MODEL, MODELS
 from .contract_adapter import ContractQuestion, ContractQuestionBatch, PageIndex
 
 logger = logging.getLogger("ai_module.service")
@@ -52,6 +52,28 @@ RECITATION_FEEDBACK = (
     "it was blocked for copying too much of the document; write every question, option and "
     "explanation in your own words, and keep each source_quote under 15 words"
 )
+
+
+OVERLOAD_PAUSE_SECONDS = 8  # wait before asking again after every model reported being busy
+BUSY_MESSAGE = "The question generator is very busy right now. Please try again in a minute."
+
+
+class GeminiBusy(Exception):
+    """Every configured Gemini model was overloaded or unavailable."""
+
+
+def is_overloaded(exc: Exception) -> bool:
+    """Whether a Gemini failure is about capacity or availability rather than the request.
+
+    Those are worth retrying on another model. A blocked or invalid request is not.
+    """
+    status = getattr(exc, "status_code", None)
+    if status in (429, 500, 502, 503, 504):
+        return True
+    text = str(exc).lower()
+    if "no longer available" in text or ("model" in text and "not found" in text):
+        return True
+    return any(word in text for word in ("too_many_requests", "high demand", "overloaded", "resource_exhausted", "unavailable"))
 
 
 def _is_recitation_block(exc: Exception) -> bool:
@@ -117,7 +139,26 @@ class GeminiEngine:
 
         gemini.delete_store(store_name)
 
+    last_model = MODEL  # informational: the model that wrote the most recent batch
+
     def write_questions(self, prompt: str, store_names: Sequence[str]) -> ContractQuestionBatch:
+        busy: Exception | None = None
+        for model in MODELS:
+            try:
+                batch = self._write_with(model, prompt, store_names)
+            except Exception as exc:
+                if not is_overloaded(exc):
+                    raise
+                busy = exc
+                logger.warning("Gemini model %s is overloaded or unavailable; trying the next one", model)
+                continue
+            if model != MODELS[0]:
+                logger.warning("Questions were written by the fallback model %s", model)
+            self.last_model = model
+            return batch
+        raise GeminiBusy("every configured Gemini model is overloaded") from busy
+
+    def _write_with(self, model: str, prompt: str, store_names: Sequence[str]) -> ContractQuestionBatch:
         from pydantic import ValidationError
 
         from . import gemini
@@ -131,7 +172,7 @@ class GeminiEngine:
                     "Return valid JSON that follows the schema exactly."
                 )
             interaction = gemini.client.interactions.create(
-                model=MODEL,
+                model=model,
                 input=full_prompt,
                 # One store per document; File Search can query several at once.
                 tools=[{"type": "file_search", "file_search_store_names": list(store_names)}],
@@ -309,7 +350,7 @@ class GameMasterService:
             "schema_version": adapter.CONTRACT_VERSION,
             "generation": {
                 "provider_question_set_id": request.question_set_id,
-                "model": MODEL,
+                "model": getattr(self.engine, "last_model", MODEL),
                 "prompt_version": PROMPT_VERSION,
                 "pipeline_version": PIPELINE_VERSION,
                 "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -326,6 +367,12 @@ class GameMasterService:
             start = time.perf_counter()
             try:
                 batch = self.engine.write_questions(prompt, stores)
+            except GeminiBusy:
+                logger.warning("All Gemini models are busy (attempt %d/%d)", attempt, GENERATION_ATTEMPTS)
+                if attempt < GENERATION_ATTEMPTS:
+                    time.sleep(OVERLOAD_PAUSE_SECONDS)
+                    continue
+                raise ServiceError(503, BUSY_MESSAGE) from None
             except Exception as exc:
                 if _is_recitation_block(exc) and attempt < GENERATION_ATTEMPTS:
                     # Gemini refuses answers that copy too much of a published text.

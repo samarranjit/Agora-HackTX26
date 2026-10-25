@@ -7,6 +7,23 @@
 .storywood .backend-hud { background: #19383ce8; top: 174px; max-width: 325px; }
 .storywood .adventure-vitals { background: #19383ce8; }
 .storywood .forest-interaction { background: #19383cf2; border-color: #d4c18a99; }
+.guardian-speech-layer { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: #120f0c2e; }
+.guardian-speech {
+  position: absolute; left: var(--speech-x, 50%); top: var(--speech-y, 18%);
+  transform: translate(-50%, 0);
+  pointer-events: auto; width: min(420px, calc(100% - 24px)); max-height: min(62vh, 520px);
+  padding: 18px 20px 16px; margin: 0;
+}
+.storywood .backend-card.guardian-speech { animation: story-speech-in 180ms ease-out both; }
+@keyframes story-speech-in { from { opacity: 0; } to { opacity: 1; } }
+.guardian-speech::before {
+  content: ""; position: absolute; left: 50%; top: -12px; width: 18px; height: 12px;
+  transform: translateX(-50%);
+  background: #1e3032f5;
+  clip-path: polygon(50% 0, 0 100%, 100% 100%);
+}
+.guardian-speech h1 { font-size: 24px; }
+.guardian-speech .quiz-question { font-size: 18px; line-height: 1.35; }
 .forest-question-count { color: #e8ce95; margin: 0 0 20px; font-size: 13px; }
 .forest-reward { padding: 8px 0; }
 .forest-reward > span { font-size: 38px; color: #e8ce95; }
@@ -38,6 +55,21 @@
 .forest-reward > span { display: inline-block; animation: story-reward 550ms ease-out both; }
 .dragon-victory { border-top: 1px solid #e8ce9577; background: radial-gradient(ellipse at top, #ecd19a12, transparent 75%); }
 .forest-scene-transition { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: #25263b; animation: story-arrival 650ms ease-out both; }
+.try-again-overlay {
+  position: absolute; inset: 0; z-index: 8; pointer-events: none;
+  display: grid; place-items: center; background: #0c1214d6;
+  animation: try-again-fade 3s ease forwards;
+}
+.try-again-overlay strong {
+  font: 84px/1 Georgia, 'Times New Roman', serif; color: #f6ead0;
+  letter-spacing: .08em; text-shadow: 0 10px 42px #000a;
+}
+@keyframes try-again-fade {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
 @keyframes story-overlay-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes story-card-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes story-prompt-in { from { opacity: 0; transform: translate(-50%, 5px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -48,7 +80,11 @@
 @keyframes story-reward { from { transform: scale(.85) rotate(-12deg); opacity: .5; } to { transform: scale(1) rotate(0); opacity: 1; } }
 @keyframes story-arrival { from { opacity: .75; } to { opacity: 0; } }
 @media (max-width: 600px) { .storywood .sound-control { padding: 7px 8px; font-size: 10px; } .forest-topbar-actions, .dialog-tools { gap: 6px; } .storywood .palace-brand strong { font-size: 18px; } .storywood .palace-brand .brand-crest { display: none; } }
-@media (prefers-reduced-motion: reduce) { .storywood *, .storywood *::before, .storywood *::after { animation: none !important; transition: none !important; } .forest-scene-transition { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .storywood *, .storywood *::before, .storywood *::after { animation: none !important; transition: none !important; }
+  .forest-scene-transition { display: none; }
+  .try-again-overlay { opacity: 1 !important; }
+}
 
 .pdf-intro { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; color: #dbe1d2; }
 .pdf-crest { display: grid; place-items: center; flex-shrink: 0; width: 62px; height: 70px; color: #edcf94; font-size: 42px; border: 1px solid #cdb78677; border-radius: 18px 18px 28px 28px; background: #cdb7860a; }
@@ -70,17 +106,12 @@
 .study-set-list .pdf-selection { padding: 12px 0; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .health-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.health-track { height: 8px; background: #11282b; border-radius: 5px; overflow: hidden; margin: 8px 0; }
-.health-track > div { height: 100%; background: linear-gradient(90deg, #b74d61, #e8a290); }
-.lives-label { font-size: 11px; color: #d9d2bd; margin-bottom: 10px; }
+.storywood .xp-track { background: #11282b; }
 .hud-leaderboard { pointer-events: auto; margin-top: 10px; padding: 6px 12px; font-size: 11px; }
 .storywood .palace-hud.hud-paused { z-index: 4; }
-.hud-paused .adventure-vitals { left: auto; right: 28px; top: 100px; bottom: auto; width: 220px; }
-.hud-paused .backend-hud { left: auto; right: 28px; top: 258px; width: 220px; }
+.storywood:has(.hud-paused) .backend-overlay { padding-bottom: 140px; }
+.hud-paused .backend-hud { left: auto; right: 28px; top: 198px; width: 220px; }
 .hud-paused .adventure-objective, .hud-paused .palace-hint, .hud-paused .palace-crosshair, .hud-paused .door-prompt, .hud-paused .palace-relock, .hud-paused .bridge-notice, .hud-paused .respawn-notice, .hud-paused .hud-leaderboard { display: none; }
 @media (max-width: 950px) {
-  .storywood:has(.hud-paused) .backend-overlay { padding-bottom: 140px; }
-  .hud-paused .adventure-vitals { top: auto; right: 12px; bottom: 8px; width: 190px; padding: 8px 12px; }
-  .hud-paused .stamina-label, .hud-paused .stamina-track, .hud-paused .backend-hud { display: none; }
-  .hud-paused .lives-label { margin-bottom: 0; }
+  .hud-paused .backend-hud { display: none; }
 }

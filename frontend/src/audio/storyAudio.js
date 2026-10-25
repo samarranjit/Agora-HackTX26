@@ -4,7 +4,7 @@ export function createStoryAudio({ Context = globalThis.AudioContext || globalTh
   let noise = null, muted = false, active = false, hidden = false, environment = 'forest', disposed = false
   let failed = false
   const voices = new Set(), lastPlayed = new Map()
-  const cooldown = { footstep: 0.28, approach: 1.2, interact: 0.25, correct: 0.2, incorrect: 0.3, heart: 0.35, collect: 0.5, bridge: 3, dragon: 2, victory: 1 }
+  const cooldown = { footstep: 0.28, approach: 1.2, interact: 0.25, correct: 0.2, incorrect: 0.3, heart: 0.35, collect: 0.5, bridge: 3, dragon: 2, goblin: 1.2, wolf: 1.2, victory: 1 }
   const mix = () => {
     if (!context || disposed) return
     master.gain.setTargetAtTime(muted || hidden ? 0 : 0.22, context.currentTime, 0.035)
@@ -91,7 +91,8 @@ export function createStoryAudio({ Context = globalThis.AudioContext || globalTh
           case 'collect': [523.25, 659.25, 784, 1046.5].forEach((f, i) => voice(f, 0.48, 0.065, i * 0.07)); break
           case 'bridge': voice(55, 1.9, 0.07, 0, 'triangle', 41.2); voice(82.4, 1.6, 0.045, 0.1, 'sine', 55); break
           case 'dragon': voice(146.8, 0.7, 0.08, 0, 'triangle', 65.4); voice(98, 0.8, 0.045, 0.1); break
-          case 'wolf': voice(196, 0.6, 0.07, 0, 'sine', 294); voice(146.8, 0.45, 0.03, 0.15); break
+          case 'goblin': voice(0, 0.12, 0.11); voice(523.25, 0.14, 0.07, 0.02, 'triangle'); voice(392, 0.2, 0.05, 0.09, 'triangle', 261.63); break
+          case 'wolf': voice(0, 0.16, 0.09); voice(146.8, 0.85, 0.075, 0.05, 'sine', 329.63); voice(98, 0.5, 0.04, 0.14, 'triangle'); break
           case 'victory': [392, 523.25, 659.25, 784].forEach((f, i) => voice(f, 0.75, 0.07, i * 0.1)); break
           default: return false
         }
