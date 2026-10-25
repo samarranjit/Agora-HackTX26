@@ -16,3 +16,36 @@
 .forest-milestones { color: #e8d9ba; font-size: 13px; line-height: 1.8; }
 .storywood .backend-card p + p { margin-top: 10px; }
 @media (max-height: 650px) { .storywood .adventure-card:not(.backend-card) h1 { font-size: 39px; } .storywood .adventure-rule { margin: 12px 0; } }
+
+.forest-topbar-actions, .dialog-tools { display: flex; align-items: center; gap: 10px; }
+.storywood .palace-topbar[inert] .forest-topbar-actions { visibility: hidden; }
+.storywood .sound-control { white-space: nowrap; color: #e8d9ba; background: #203a3de8; border: 1px solid #d4c18a55; font-size: 11px; padding: 8px 11px; }
+.storywood .sound-control span { font-size: 14px; letter-spacing: 0; color: #e8ce95; }
+.storywood .dialog-tools { flex-shrink: 0; margin-bottom: 10px; }
+.storywood .dialog-tools .close-button { margin: 0; }
+.storywood .dialog-heading > .palace-kicker { min-width: 0; }
+.storywood .palace-overlay { animation: story-overlay-in 160ms ease-out both; }
+.storywood .backend-card { animation: story-card-in 180ms ease-out both; }
+.storywood .forest-interaction { animation: story-prompt-in 200ms ease-out both; }
+.forest-answer-feedback { padding: 12px; border-radius: 9px; border: 1px solid transparent; }
+.answer-correct { border-color: #9fdbc477; background: #91c5a50c; animation: story-correct 350ms ease-out; }
+.answer-incorrect { border-color: #e5b29a77; background: #d798890b; animation: story-mistake 280ms ease-out; }
+.storywood .heart-loss { animation: story-heart-loss 350ms ease-out; }
+.forest-inline-hearts { display: inline-block; }
+.forest-progress-gain { display: block; transform-origin: left center; animation: story-progress 400ms ease-out; }
+.forest-collecting { color: #f1d599; }
+.forest-reward { animation: story-card-in 260ms ease-out both; }
+.forest-reward > span { display: inline-block; animation: story-reward 550ms ease-out both; }
+.dragon-victory { border-top: 1px solid #e8ce9577; background: radial-gradient(ellipse at top, #ecd19a12, transparent 75%); }
+.forest-scene-transition { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: #25263b; animation: story-arrival 650ms ease-out both; }
+@keyframes story-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes story-card-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes story-prompt-in { from { opacity: 0; transform: translate(-50%, 5px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes story-correct { from { box-shadow: 0 0 0 2px #9fdbc44d; } to { box-shadow: 0 0 0 0 #9fdbc400; } }
+@keyframes story-mistake { from { border-color: #f0baa4; } to { border-color: #e5b29a77; } }
+@keyframes story-heart-loss { 35% { transform: scale(.92); opacity: .7; } to { transform: scale(1); opacity: 1; } }
+@keyframes story-progress { 35% { transform: scale(1.035); color: #ffe4a8; } to { transform: scale(1); } }
+@keyframes story-reward { from { transform: scale(.85) rotate(-12deg); opacity: .5; } to { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes story-arrival { from { opacity: .75; } to { opacity: 0; } }
+@media (max-width: 600px) { .storywood .sound-control { padding: 7px 8px; font-size: 10px; } .forest-topbar-actions, .dialog-tools { gap: 6px; } .storywood .palace-brand strong { font-size: 18px; } .storywood .palace-brand .brand-crest { display: none; } }
+@media (prefers-reduced-motion: reduce) { .storywood *, .storywood *::before, .storywood *::after { animation: none !important; transition: none !important; } .forest-scene-transition { display: none; } }

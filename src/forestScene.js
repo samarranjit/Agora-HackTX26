@@ -5,9 +5,10 @@ import { disposeScene } from './sceneResources.js'
 import { createFairytaleItem, createStoryDragon } from './storybookProps.js'
 import { FOREST_COLLECTIBLES } from './game/forestContent.js'
 import { createForestWorld, createHallWorld, FOREST_PATH, FOREST_TREES, FOREST_ROCKS, forestHeight, pathX } from './forestLayout.js'
+import { createMagicEffects } from './magicEffects.js'
 
 function palette() {
-  const colors = { stone: 0xe3c9ab, trim: 0xf8dfb2, shadowStone: 0xb59994, foundation: 0x756d87, roof: 0x394777, royal: 0x702c70, gold: 0xe4b662, iron: 0x393c50, window: 0xffce83, gateDark: 0x262438, grass: 0x59795f, lawn: 0x406554, path: 0xccb68e, wood: 0x634b44, woodLight: 0x987357, leaves: 0x365d56, leavesLight: 0x67866a, birch: 0xd9cbb2, flower: 0xbb8bb7, water: 0x6ca9ae, ripple: 0xb7d6cb, distant: 0x80989a }
+  const colors = { stone: 0xe3c9ab, trim: 0xf8dfb2, shadowStone: 0xb59994, foundation: 0x756d87, roof: 0x394777, royal: 0x702c70, gold: 0xe4b662, iron: 0x393c50, window: 0xffce83, gateDark: 0x262438, grass: 0x59795f, lawn: 0x406554, path: 0xccb68e, wood: 0x634b44, woodLight: 0x987357, leaves: 0x365d56, leavesLight: 0x67866a, leavesGold: 0x8a956d, birch: 0xd9cbb2, flower: 0xbb8bb7, water: 0x6ca9ae, ripple: 0xb7d6cb, distant: 0x80989a }
   return Object.fromEntries(Object.entries(colors).map(([name, color]) => [name, new THREE.MeshStandardMaterial({ color, roughness: 0.9, flatShading: true, side: name === 'royal' ? THREE.DoubleSide : THREE.FrontSide, ...(name === 'window' ? { emissive: color, emissiveIntensity: 0.65 } : {}) })]))
 }
 function daylight(scene) {
@@ -63,8 +64,9 @@ export function createForestScene({ spawnId = 'start' } = {}) {
   }
   for (const [i, tree] of FOREST_TREES.entries()) {
     const y = forestHeight(tree.x, tree.z)
+    const canopy = 1 + Math.sin(i * 2.4) * 0.1
     put('tapered', tree.birch ? 'birch' : 'wood', [tree.x, y + tree.height * 0.33, tree.z], [0.35, tree.height * 0.66, 0.35])
-    put(i % 3 ? 'cone' : 'orb', i % 2 ? 'leaves' : 'leavesLight', [tree.x, y + tree.height * 0.75, tree.z], [2.05, tree.height * 0.65, 2.05], [0, i, 0])
+    put(i % 3 ? 'cone' : 'orb', i % 7 === 0 ? 'leavesGold' : i % 2 ? 'leaves' : 'leavesLight', [tree.x, y + tree.height * 0.75, tree.z], [2.05 * canopy, tree.height * 0.65, 2.05 * canopy], [0, i, 0])
     if (i % 3 === 0) put('cone', 'leaves', [tree.x, y + tree.height * 0.95, tree.z], [1.5, tree.height * 0.5, 1.5])
   }
   FOREST_ROCKS.forEach((p, i) => put('orb', 'shadowStone', [p.x, forestHeight(p.x, p.z) + 0.4, p.z], [1, 0.8, 1.1], [0, i, 0]))
@@ -81,24 +83,28 @@ export function createForestScene({ spawnId = 'start' } = {}) {
   // A shallow secluded pond, an arch, a nest shelter and mushroom rings identify the clearings.
   put('orb', 'water', [-15, forestHeight(-15, 29) + 0.05, 29], [2.4, 0.09, 1.3], [0, 0, 0], false)
   put('arch', 'stone', [-13, forestHeight(-13, 9), 8.2], [1.15, 1.15, 0.4])
-  put('box', 'wood', [13, forestHeight(13, -3) + 1.9, -3.8], [2.7, 0.15, 1.6], [0, 0, -0.15])
+  put('box', 'wood', [13, forestHeight(13, -3) + 2.8, -3.8], [2.7, 0.15, 1.6], [0, 0, -0.15])
   for (let i = 0; i < 10; i++) {
     const angle = i * Math.PI * 2 / 10, x = -10 + Math.cos(angle) * 2, z = -14 + Math.sin(angle) * 2, y = forestHeight(x, z)
     put('cylinder', 'trim', [x, y + 0.22, z], [0.06, 0.44, 0.06])
     put('orb', 'flower', [x, y + 0.48, z], [0.33, 0.18, 0.33])
   }
-  const items = FOREST_COLLECTIBLES.map((definition) => {
+  const items = FOREST_COLLECTIBLES.map((definition, index) => {
     const y = forestHeight(definition.x, definition.z)
     put('cylinder', 'shadowStone', [definition.x, y + 0.17, definition.z], [0.72, 0.34, 0.72])
+    put('tapered', 'stone', [definition.x, y + 0.58, definition.z], [0.5, 0.65, 0.5])
+    put('cylinder', 'trim', [definition.x, y + 0.98, definition.z], [0.68, 0.16, 0.68])
+    put('ring', 'gold', [definition.x, y + 0.33, definition.z], [0.62, 0.62, 0.62], [Math.PI / 2, 0, 0])
+    put('gem', 'gold', [definition.x, y + 0.65, definition.z + 0.48], [0.14, 0.19, 0.05])
     // Branching stepping stones and one warm lantern are clues from the main path.
     const start = { x: pathX(definition.z), z: definition.z }
     for (let i = 1; i <= 4; i++) { const t = i / 5, x = start.x + (definition.x - start.x) * t, z = start.z + (definition.z - start.z) * t; put('orb', 'trim', [x, forestHeight(x, z) + 0.04, z], [0.35, 0.06, 0.27], [0, t, 0]) }
     put('cylinder', 'wood', [start.x + Math.sign(definition.x) * 2.6, forestHeight(start.x, start.z) + 0.7, start.z], [0.07, 1.4, 0.07])
     put('gem', 'window', [start.x + Math.sign(definition.x) * 2.6, forestHeight(start.x, start.z) + 1.55, start.z], [0.18, 0.28, 0.18])
-    const item = createFairytaleItem(definition.id); item.position.set(definition.x, y + 1.25, definition.z); scene.add(item)
+    const item = createFairytaleItem(definition.id); item.position.set(definition.x, y + 2, definition.z); scene.add(item)
     const halo = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.025, 5, 24), new THREE.MeshStandardMaterial({ color: definition.color, emissive: definition.color, emissiveIntensity: 0.55, roughness: 0.7 }))
-    halo.position.set(definition.x, y + 0.4, definition.z); halo.rotation.x = Math.PI / 2; scene.add(halo)
-    return { definition, item, halo, y }
+    halo.position.set(definition.x, y + 1.09, definition.z); halo.rotation.x = Math.PI / 2; scene.add(halo)
+    return { definition, item, halo, y, phase: index * 1.37, collected: false, collectAge: 1 }
   })
   builder.flush()
   const bridge = new THREE.Group(); bridge.position.set(0, 8.1, -31); bridge.rotation.x = -Math.PI / 2
@@ -112,26 +118,49 @@ export function createForestScene({ spawnId = 'start' } = {}) {
   for (let x = -2.8; x <= 2.8; x += 0.7) gateBuilder.put('box', 'iron', [x, 3.5, 0.2], [0.12, 7, 0.12])
   for (const y of [1.5, 3.5, 5.5]) gateBuilder.put('box', 'iron', [0, y, 0.2], [5.8, 0.12, 0.16])
   gateBuilder.flush(); scene.add(gate)
-  let elapsed = 0, announced = false, disposed = false
+  const effects = createMagicEffects(scene)
+  let elapsed = 0, announced = false, disposed = false, initialized = false, moteTime = 0
   return {
     scene, world, get spawn() { return world.spawn },
-    update(dt, { forestRun, onForestBridgeLowered } = {}) {
+    update(dt, { forestRun, onForestBridgeLowered, playerPosition, reducedMotion = false } = {}) {
       if (disposed) return
       elapsed += dt
-      items.forEach(({ definition, item, halo, y }) => {
-        const collected = forestRun?.collectedIds.includes(definition.id)
-        item.visible = !collected; item.position.y = y + 1.25 + Math.sin(elapsed * 1.7) * 0.08; item.rotation.y = Math.sin(elapsed * 0.4) * 0.25
-        halo.material.emissiveIntensity = collected ? 0.1 : 0.5 + Math.sin(elapsed * 2) * 0.12
+      items.forEach((entry) => {
+        const { definition, item, halo, y, phase } = entry
+        const collected = !!forestRun?.collectedIds.includes(definition.id)
+        if (initialized && collected && !entry.collected) { entry.collectAge = 0; effects.burst({ x: definition.x, y: y + 2, z: definition.z }, { color: definition.color, reducedMotion }) }
+        entry.collected = collected
+        if (collected) {
+          entry.collectAge = Math.min(1, entry.collectAge + dt)
+          item.visible = entry.collectAge < 0.32 && !reducedMotion
+          if (item.visible) { item.scale.setScalar(Math.max(0.05, 1 - entry.collectAge / 0.32)); item.position.y = y + 2 + entry.collectAge * 0.4 }
+          halo.visible = false
+          return
+        }
+        item.visible = true; halo.visible = true
+        item.position.y = y + 2 + (reducedMotion ? 0 : Math.sin(elapsed * 1.7 + phase) * 0.065)
+        item.rotation.y = reducedMotion ? phase : (elapsed * 0.42 + phase) % (Math.PI * 2)
+        const near = playerPosition && Math.hypot(playerPosition.x - definition.x, playerPosition.z - definition.z) < 2.8
+        const glow = near ? 1.05 : 0.45
+        halo.material.emissiveIntensity += (glow - halo.material.emissiveIntensity) * (1 - Math.exp(-dt * 6))
       })
+      if (!initialized && forestRun?.bridgeState === 'lowered') announced = true
+      if (forestRun) initialized = true
+      moteTime += dt
+      if (!reducedMotion && playerPosition && moteTime > 1.6) {
+        moteTime = 0
+        items.filter((entry) => !entry.collected).forEach(({ definition, y }) => effects.burst({ x: definition.x + 1, y: y + 1.2, z: definition.z }, { count: 3, color: 0xcce0b0, gentle: true }))
+      }
       if (forestRun && forestRun.bridgeState !== 'raised') {
         bridge.rotation.x = forestRun.bridgeState === 'lowered' ? 0 : Math.min(0, bridge.rotation.x + dt * 0.65)
         gate.position.y = forestRun.bridgeState === 'lowered' ? 16 : Math.min(16, gate.position.y + dt * 3.4)
-        if (bridge.rotation.x === 0 && gate.position.y === 16 && !announced) { announced = true; onForestBridgeLowered?.() }
+        if (bridge.rotation.x === 0 && gate.position.y === 16 && !announced) { announced = true; effects.burst({ x: 0, y: 8.3, z: -30 }, { count: 18, color: 0xd6bd97, reducedMotion }); onForestBridgeLowered?.() }
       }
       world.setBridgeOpen(forestRun?.bridgeState === 'lowered')
       if (forestRun?.checkpoint?.position) world.setCheckpoint(forestRun.checkpoint.position)
+      effects.update(dt, reducedMotion)
     },
-    dispose() { if (!disposed) { disposed = true; disposeScene(scene) } },
+    dispose() { if (!disposed) { disposed = true; effects.dispose(); disposeScene(scene) } },
   }
 }
 
@@ -153,7 +182,15 @@ export function createCastleHallScene() {
   scene.add(new THREE.HemisphereLight(0xc0bcf0, 0x8b6e60, 1.7))
   const light = new THREE.PointLight(0xffbb77, 170, 40, 1.4); light.position.set(0, 6, 0); scene.add(light)
   const dragon = createStoryDragon(); dragon.root.position.z = -8; scene.add(dragon.root)
-  let elapsed = 0, disposed = false
+  const effects = createMagicEffects(scene, 64)
+  let elapsed = 0, disposed = false, entered = false, won = false
   const world = createHallWorld()
-  return { scene, world, spawn: world.spawn, update(dt, { forestRun } = {}) { if (!disposed) { elapsed += dt; dragon.update(elapsed, forestRun?.dragonDefeated) } }, dispose() { if (!disposed) { disposed = true; disposeScene(scene) } } }
+  return { scene, world, spawn: world.spawn, update(dt, { forestRun, reducedMotion = false } = {}) {
+    if (disposed) return
+    elapsed += dt
+    if (!entered) { entered = true; won = !!forestRun?.dragonDefeated; effects.burst({ x: 0, y: 2.6, z: -6 }, { count: 12, color: 0xbba2df, reducedMotion }) }
+    if (forestRun?.dragonDefeated && !won) { won = true; effects.burst({ x: 0, y: 3, z: -6 }, { count: 30, color: 0xffda89, reducedMotion }) }
+    dragon.update(reducedMotion ? 0 : elapsed, forestRun?.dragonDefeated)
+    effects.update(dt, reducedMotion)
+  }, dispose() { if (!disposed) { disposed = true; effects.dispose(); disposeScene(scene) } } }
 }

@@ -10,8 +10,9 @@ import { nearGoblin } from './forestGoblin.js'
 import { createForestScene, createCastleHallScene } from './forestScene.js'
 import { nearbyForestTarget } from './forestLayout.js'
 import { getForestTarget } from './game/forestContent.js'
+import { createWalkFeel } from './walkFeel.js'
 
-export default function RoomExperience({ memories, active, unlocked, session, onDoor, onPause, onExit, onDiscover, onGoblin, backendStatus, signedIn, environment = 'indoor', hearts, controlRef, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle }) {
+export default function RoomExperience({ memories, active, unlocked, session, onDoor, onPause, onExit, onDiscover, onGoblin, backendStatus, signedIn, environment = 'indoor', hearts, controlRef, forestRun, forestPresentation, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle }) {
   const mountRef = useRef(null)
   const controlsRef = useRef(null)
   const propsRef = useRef({})
@@ -71,8 +72,14 @@ export default function RoomExperience({ memories, active, unlocked, session, on
     let disposed = false
     let hudElapsed = 0
     let noticeTimer
+    const walkFeel = createWalkFeel()
+    let bobOffset = 0
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let reducedMotion = motionPreference.matches
+    const preferenceChanged = (event) => { reducedMotion = event.matches }
+    motionPreference.addEventListener('change', preferenceChanged)
     const nearDoor = () => Math.hypot(camera.position.x, camera.position.z - ROOM_SIZE / 2) < 2.3
-    const forestTarget = () => forest ? nearbyForestTarget(camera.position, propsRef.current.forestRun) : hall ? (Math.hypot(camera.position.x, camera.position.z + 8) < 5.5 ? 'dragon' : Math.abs(camera.position.x) < 3 && camera.position.z > 8 ? 'hall-exit' : null) : null
+    const forestTarget = () => forest ? nearbyForestTarget({ x: camera.position.x, y: camera.position.y - bobOffset, z: camera.position.z }, propsRef.current.forestRun) : hall ? (Math.hypot(camera.position.x, camera.position.z + 8) < 5.5 ? 'dragon' : Math.abs(camera.position.x) < 3 && camera.position.z > 8 ? 'hall-exit' : null) : null
     const controls = createPlayerControls({
       canvas,
       camera,
@@ -113,11 +120,18 @@ export default function RoomExperience({ memories, active, unlocked, session, on
       const dt = Math.min((now - lastTime) / 1000, 0.05)
       lastTime = now
       const isOpen = propsRef.current.unlocked
-      room.update(dt, propsRef.current)
+      // Remove last frame's presentation offset before physics and all proximity checks.
+      camera.position.y -= bobOffset
+      bobOffset = 0
+      const beforeX = camera.position.x, beforeZ = camera.position.z
+      room.update(dt, { ...propsRef.current, playerPosition: motion?.position, reducedMotion })
       controls.update(dt, propsRef.current)
       if (adventuring && controls.active) {
         const nextNearby = forest || hall ? forestTarget() : nearGoblin(camera.position) ? 'goblin' : Math.abs(camera.position.x) < 4 && camera.position.z < -5 ? 'bridge' : null
-        if (nextNearby !== lastNearby) { lastNearby = nextNearby; setNearby(nextNearby) }
+        if (nextNearby !== lastNearby) {
+          lastNearby = nextNearby; setNearby(nextNearby)
+          if (getForestTarget(nextNearby) && !(nextNearby === 'dragon' && propsRef.current.forestRun?.dragonDefeated)) soundRef?.current?.play('approach')
+        }
         if (forest && propsRef.current.forestRun.bridgeState === 'lowered' && camera.position.z < -32.4 && !exited) {
           exited = true
           controls.suspend(() => propsRef.current.onForestEnterCastle?.())
@@ -145,6 +159,12 @@ export default function RoomExperience({ memories, active, unlocked, session, on
           controls.suspend(propsRef.current.onExit)
         }
       }
+      if (forest || hall) {
+        const feel = walkFeel.update(dt, Math.hypot(camera.position.x - beforeX, camera.position.z - beforeZ), { active: controls.active, grounded: motion.grounded, reducedMotion })
+        bobOffset = feel.offsetY
+        camera.position.y += bobOffset
+        if (feel.step) soundRef?.current?.play('footstep')
+      }
       renderer.render(room.scene, camera)
       frameId = requestAnimationFrame(tick)
     }
@@ -154,6 +174,7 @@ export default function RoomExperience({ memories, active, unlocked, session, on
       clearTimeout(noticeTimer)
       cancelAnimationFrame(frameId)
       resize.disconnect()
+      motionPreference.removeEventListener('change', preferenceChanged)
       controls.dispose()
       controlsRef.current = null
       room.dispose()
@@ -162,7 +183,7 @@ export default function RoomExperience({ memories, active, unlocked, session, on
       renderer.forceContextLoss()
       canvas.remove()
     }
-  }, [memories, session, outdoor, forest, hall, adventuring])
+  }, [memories, session, outdoor, forest, hall, adventuring, soundRef])
 
   useEffect(() => { controlsRef.current?.setActive(active) }, [active])
 
@@ -174,8 +195,8 @@ export default function RoomExperience({ memories, active, unlocked, session, on
       <div className="palace-stage" ref={mountRef} inert={!active} />
       {active && <div className="palace-hud">
         <div className="palace-crosshair" aria-hidden="true" />
-        {adventuring && <AdventureHud hearts={hearts} forestRun={forestRun} backendStatus={backendStatus} signedIn={signedIn} stamina={vitals.stamina} exhausted={vitals.exhausted} nearBridge={nearby === 'bridge' || nearby === 'forest-gate'} respawned={respawned} />}
-        {fairytaleItem && <div className="door-prompt forest-interaction" role="status"><strong>{fairytaleItem.name}</strong><p>{nearby === 'dragon' && forestRun.dragonDefeated ? 'The Storykeeper is at peace. Press E to revisit your victory.' : `Press E to ${nearby === 'dragon' ? 'challenge the dragon' : 'collect'} · ${fairytaleItem.questions.length}-question challenge`}</p></div>}
+        {adventuring && <AdventureHud hearts={hearts} forestRun={forestRun} forestPresentation={forestPresentation} backendStatus={backendStatus} signedIn={signedIn} stamina={vitals.stamina} exhausted={vitals.exhausted} nearBridge={nearby === 'bridge' || nearby === 'forest-gate'} respawned={respawned} />}
+        {fairytaleItem && <div key={nearby} className="door-prompt forest-interaction" role="status"><strong>{fairytaleItem.name}</strong><p>{nearby === 'dragon' && forestRun.dragonDefeated ? 'The Storykeeper is at peace. Press E to revisit your victory.' : `Press E to ${nearby === 'dragon' ? 'challenge the dragon' : 'collect'} · ${fairytaleItem.questions.length}-question challenge`}</p></div>}
         {hall && nearby === 'hall-exit' && <div className="door-prompt" role="status"><strong>The forest awaits</strong><p>Press E to return to the castle bridge.</p></div>}
         {outdoor && nearby === 'goblin' && <div className="door-prompt" role="status"><strong>Forest Goblin — Press E to challenge.</strong><p>The backend chooses the next guardian and checks your eligibility.</p></div>}
         {!adventuring && memory && <article className="memory-label" aria-live="polite">

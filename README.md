@@ -17,6 +17,8 @@ Choose **Begin offline guest adventure**, follow the uphill trail and explore th
 
 Each completed item awards **20 prototype XP once** and a checkpoint. Collect all five to reach **100 XP**, lower the bridge and enter the dragon hall. Each wrong answer removes one of three hearts. The third mistake fully resets the run, including every item, XP, checkpoint and castle unlock. Closing a dialog does not heal or erase partial challenge progress. Medium is the only difficulty.
 
+Items spin and float on illuminated pedestals, with brief collection sparkles. Walking adds restrained camera bob. **Sound on/off** is available in the world and every dialog; procedural audio starts only after a real click or keyboard activation. Your system's reduced-motion preference disables camera bob and reduces decorative effects. Gameplay also works without audio support.
+
 No login, account, upload or backend request is used by the default guest adventure. Refreshing or leaving ends the run. The developer-only API tester remains available separately. See [the forest guide and backend guest handoff](docs/FOREST_GUEST_PROTOTYPE.md) for details and limitations; existing account-based API instructions are in [the backend guide](docs/BACKEND_INTEGRATION.md).
 
 ## Explore the preserved courtyard (development)
