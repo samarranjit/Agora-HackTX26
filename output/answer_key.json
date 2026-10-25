@@ -2,701 +2,673 @@
   {
     "id": "ch_1",
     "subject_id": "subj_1",
-    "question": "How many decisions are required to specify a depth-1 decision tree on a two-dimensional feature space?",
+    "question": "What type of classifier is a perceptron, which makes its decision equation equivalent to the equation of a line for two-dimensional inputs?",
     "options": [
       {
         "id": "a",
-        "text": "Two decisions"
+        "text": "A non-linear polynomial classifier"
       },
       {
         "id": "b",
-        "text": "Four decisions"
+        "text": "A linear classifier"
       },
       {
         "id": "c",
-        "text": "Eight decisions"
+        "text": "A quadratic boundary classifier"
       },
       {
         "id": "d",
-        "text": "Ten decisions"
+        "text": "A hyperbolic classifier"
       }
     ],
     "correct_option_id": "b",
-    "explanation": "Specifying a depth-1 decision tree requires four decisions: choosing the cut coordinate, placing the cut, and declaring predictions for both resulting sides.",
-    "mnemonic": "Four wooden picture frames stacked neatly on a square dining room table.",
-    "source_quote": "specifying it requires exactly four decisions: which coordinate to cut on (vertical or horizontal), where to put the cut, and what to predict",
+    "explanation": "A perceptron functions as a linear classifier where the two-dimensional input equation represents a line.",
+    "mnemonic": "A straight pencil draws a clean line across a flat paper table.",
+    "source_quote": "The intuition behind this important result relies on understanding that a perceptron is a linear classifier.",
     "xp_reward": 5
   },
   {
     "id": "ch_2",
     "subject_id": "subj_1",
-    "question": "Into how many regions can a depth-d decision tree carve a two-dimensional plane?",
+    "question": "Who provided the famous 1969 proof demonstrating that a single neural unit cannot compute functions like XOR?",
     "options": [
       {
         "id": "a",
-        "text": "Up to 2^d regions"
+        "text": "Rumelhart and McClelland"
       },
       {
         "id": "b",
-        "text": "Up to d^2 regions"
+        "text": "Widrow and Hoff"
       },
       {
         "id": "c",
-        "text": "Up to 2d regions"
+        "text": "Minsky and Papert"
       },
       {
         "id": "d",
-        "text": "Up to d! regions"
+        "text": "Goodfellow et al."
       }
     ],
-    "correct_option_id": "a",
-    "explanation": "A decision tree with depth d splits the plane into at most 2^d separate regions.",
-    "mnemonic": "Two glossy cardboard numbers, two and d, glued onto a red brick wall.",
-    "source_quote": "a depth-d tree carves the plane into up to $2^{d}$ regions.",
+    "correct_option_id": "c",
+    "explanation": "Minsky and Papert published the proof in 1969 showing that a single neural unit fails on certain simple functions.",
+    "mnemonic": "Two men named Minsky and Papert carve a wooden sculpture together.",
+    "source_quote": "One of the most clever demonstrations of the need for multi-layer networks was the proof by Minsky and Papert (1969) that a single neural unit cannot compute some very simple functions of its input.",
     "xp_reward": 5
   },
   {
     "id": "ch_3",
     "subject_id": "subj_1",
-    "question": "What are the two redeeming qualities of decision trees identified in the text?",
+    "question": "What geometric term describes the decision boundary when a perceptron has more than 2 inputs?",
     "options": [
       {
         "id": "a",
-        "text": "Fast training speed and low memory footprint"
+        "text": "A hypercube"
       },
       {
         "id": "b",
-        "text": "Natural probability outputs and scale invariance"
+        "text": "A parabola"
       },
       {
         "id": "c",
-        "text": "Interpretability and the ability to be combined into powerful ensembles"
+        "text": "A circle"
       },
       {
         "id": "d",
-        "text": "Smooth decision boundaries and immunity to overfitting"
+        "text": "A hyperplane"
       }
     ],
-    "correct_option_id": "c",
-    "explanation": "Decision trees are valuable because they provide human-interpretable reasoning and can be combined into strong models using ensembling.",
-    "mnemonic": "A clear glass magnifying glass resting on top of a heavy iron chain link.",
-    "source_quote": "First, they are interpretable they match how humans reason. ... Second, they can be combined into powerful models that is ensembling",
+    "correct_option_id": "d",
+    "explanation": "With more than two inputs, the decision boundary generalizes from a line to a hyperplane.",
+    "mnemonic": "A high airplane flies smoothly over multiple flat terrain maps.",
+    "source_quote": "If we had more than 2 inputs, the decision boundary becomes a hyperplane instead of a line",
     "xp_reward": 5
   },
   {
     "id": "ch_4",
     "subject_id": "subj_1",
-    "question": "Why are depth-2 decision trees and logistic regression described as incomparable model families?",
+    "question": "Which logical function is explicitly stated as not being a linearly separable function?",
     "options": [
       {
         "id": "a",
-        "text": "Depth-2 trees require larger datasets than logistic regression to achieve statistical stability."
+        "text": "XOR"
       },
       {
         "id": "b",
-        "text": "Logistic regression produces continuous probability outputs while depth-2 trees produce discrete classes."
+        "text": "AND"
       },
       {
         "id": "c",
-        "text": "Logistic regression cannot make vertical cuts while depth-2 trees can only make diagonal splits."
+        "text": "OR"
       },
       {
         "id": "d",
-        "text": "No tree can produce a diagonal cut, and no single line can reproduce a depth-2 tree's four-quadrant partition."
+        "text": "NOT"
       }
     ],
-    "correct_option_id": "d",
-    "explanation": "The model families are incomparable because a single straight line cannot divide space into four quadrants, nor can axis-aligned tree splits draw diagonal lines.",
-    "mnemonic": "A straight steel rule crossing over a four-quadrant wooden chessboard.",
-    "source_quote": "no tree of any depth can produce a diagonal cut, and no single line can reproduce a depth-2 tree's four-quadrant partition.",
+    "correct_option_id": "a",
+    "explanation": "XOR cannot be separated by a single straight line, meaning it is not linearly separable.",
+    "mnemonic": "A crossed pair of scissors cuts through a twisted knot.",
+    "source_quote": "Notice that there is simply no way to draw a line that separates the positive cases of XOR (01 and 10) from the negative cases (00 and 11). We say that XOR is not a linearly separable function.",
     "xp_reward": 5
   },
   {
     "id": "ch_5",
     "subject_id": "subj_1",
-    "question": "What occurs when instantiating a decision tree classifier in code prior to executing the .fit() method?",
+    "question": "How many units are in the middle layer (called h) when computing XOR using a layered network of ReLU-based units in the text's example?",
     "options": [
       {
         "id": "a",
-        "text": "The algorithm calculates default parameters based on initial dataset statistics."
+        "text": "One unit"
       },
       {
         "id": "b",
-        "text": "The code declares which models are allowed without inspecting any data."
+        "text": "Two units"
       },
       {
         "id": "c",
-        "text": "The model calculates initial cross-entropy loss values on hidden split folds."
+        "text": "Three units"
       },
       {
         "id": "d",
-        "text": "The algorithm fits four structural parameters to minimize empirical training error."
+        "text": "Four units"
       }
     ],
     "correct_option_id": "b",
-    "explanation": "Instantiating the model merely specifies the allowed family of functions and default loss settings without accessing any training data.",
-    "mnemonic": "An empty black plastic clipboard with a printed declaration sheet clipped to it.",
-    "source_quote": "It does not see any data. It cannot choose a good model; it only declares which models are allowed.",
+    "explanation": "The middle layer h for computing XOR with ReLU units consists of two units.",
+    "mnemonic": "Two identical wooden blocks sit side by side on a shelf.",
+    "source_quote": "The middle layer (called h) has two units, and the output layer (called y) has one unit.",
     "xp_reward": 5
   },
   {
     "id": "ch_6",
     "subject_id": "subj_2",
-    "question": "How does hinge loss evaluate misclassified data points?",
+    "question": "What mathematical limitation initially caused the field of neural networks to decline after 1969?",
     "options": [
       {
         "id": "a",
-        "text": "In proportion to their distance from the boundary."
+        "text": "A single perceptron unit was unable to model functions as simple as XOR."
       },
       {
         "id": "b",
-        "text": "By assigning a fixed penalty of 1 regardless of distance."
+        "text": "Multilayer perceptrons could not compute basic linear regressions."
       },
       {
         "id": "c",
-        "text": "Exponentially based on prediction magnitude."
+        "text": "The McCulloch-Pitts neuron failed to handle floating-point values."
       },
       {
         "id": "d",
-        "text": "By taking the squared difference between predicted and actual values."
+        "text": "Gradient descent algorithms always diverged on small datasets."
       }
     ],
     "correct_option_id": "a",
-    "explanation": "Hinge loss penalizes misclassified points proportionally based on how far they lie from the decision boundary.",
-    "mnemonic": "A metal door hinge connected to a measuring tape stretching to a red boundary line.",
-    "source_quote": "Hinge loss charges nothing for correct points and charges misclassified points in proportion to their distance from the boundary.",
+    "explanation": "The field declined because Minsky and Papert showed that a single perceptron could not model simple functions like XOR.",
+    "mnemonic": "A glowing red X and O crossed out on a single chalkboard.",
+    "source_quote": "The field of neural networks declined after it was shown that a single perceptron unit was unable to model functions as simple as XOR (Minsky and Papert, 1969).",
     "xp_reward": 5
   },
   {
     "id": "ch_7",
     "subject_id": "subj_2",
-    "question": "Why is 0/1 loss notoriously difficult to optimize using local search methods like gradient descent?",
+    "question": "During which decade did a major revival occur for the field of neural networks?",
     "options": [
       {
         "id": "a",
-        "text": "It requires computing second-order derivatives at every step."
+        "text": "The 1960s"
       },
       {
         "id": "b",
-        "text": "Its curve is jagged, causing local search to get stuck on small upticks."
+        "text": "The 1970s"
       },
       {
         "id": "c",
-        "text": "It heavily penalizes confident correct predictions."
+        "text": "The 1980s"
       },
       {
         "id": "d",
-        "text": "Its loss values grow exponentially as confidence increases."
+        "text": "The 1990s"
       }
     ],
-    "correct_option_id": "b",
-    "explanation": "Gradient descent gets trapped in local upticks because the 0/1 loss curve is jagged rather than smooth.",
-    "mnemonic": "A hiker climbing a jagged saw blade gets stuck on a small sharp tooth.",
-    "source_quote": "On the 0/1 loss, local search gets stuck on one of the little upticks and declares victory.",
+    "correct_option_id": "c",
+    "explanation": "A major revival happened in the 1980s with the widespread adoption of practical tools like error backpropagation.",
+    "mnemonic": "An old 1980s boombox wrapped with a glowing propagation cable.",
+    "source_quote": "While some small amount of work continued during the next two decades, a major revival for the field didn't come until the 1980s, when practical tools for building deeper networks like error backpropagation became widespread",
     "xp_reward": 5
   },
   {
     "id": "ch_8",
     "subject_id": "subj_2",
-    "question": "Under absolute loss in regression, how does the penalty of ten $1,000 errors compare to one $10,000 error?",
+    "question": "Which practical tool became widespread during the 1980s to help build deeper networks?",
     "options": [
       {
         "id": "a",
-        "text": "Ten $1,000 errors cost ten times more than one $10,000 error."
+        "text": "Stochastic gradient descent"
       },
       {
         "id": "b",
-        "text": "One $10,000 error costs ten times more than ten $1,000 errors."
+        "text": "Error backpropagation"
       },
       {
         "id": "c",
-        "text": "Ten $1,000 errors cost the exact same as one $10,000 error."
+        "text": "Greedy layer-wise training"
       },
       {
         "id": "d",
-        "text": "Absolute loss cannot evaluate errors greater than $1,000."
+        "text": "Convolutional filtering"
       }
     ],
-    "correct_option_id": "c",
-    "explanation": "Absolute loss sums individual error magnitudes directly, so ten $1,000 errors cost the exact same as one $10,000 error.",
-    "mnemonic": "Ten dollar bills stacked next to a single ten-thousand-dollar golden coin on a scale.",
-    "source_quote": "Under absolute loss, ten errors of $1,000 cost the same as one error of $10,000.",
+    "correct_option_id": "b",
+    "explanation": "Error backpropagation became widespread during the 1980s as a practical tool for building deeper networks.",
+    "mnemonic": "A backward-pointing neon arrow flashing behind a multi-layered brick wall.",
+    "source_quote": "a major revival for the field didn't come until the 1980s, when practical tools for building deeper networks like error backpropagation became widespread (Rumelhart et al., 1986).",
     "xp_reward": 5
   },
   {
     "id": "ch_9",
     "subject_id": "subj_2",
-    "question": "When fitting a model with no features at all, which constant minimizes absolute loss?",
+    "question": "What alternative term was frequently used for neural networks and related architectures during the 1980s, particularly in psychology and cognitive science?",
     "options": [
       {
         "id": "a",
-        "text": "The mean of the y's."
+        "text": "Deep belief systems"
       },
       {
         "id": "b",
-        "text": "The variance of the y's."
+        "text": "Propositional logic networks"
       },
       {
         "id": "c",
-        "text": "The mode of the y's."
+        "text": "Adaptive switching circuits"
       },
       {
         "id": "d",
-        "text": "The median of the y's."
+        "text": "Connectionist or parallel distributed processing"
       }
     ],
     "correct_option_id": "d",
-    "explanation": "Minimizing absolute loss without features results in selecting the median of the target values.",
-    "mnemonic": "A wooden ruler balancing perfectly on a golden box labeled with the word MEDIAN.",
-    "source_quote": "the constant that minimizes squared loss is the mean of the y's, and the constant that minimizes absolute loss is the median.",
+    "explanation": "The term connectionist or parallel distributed processing was often used during the 1980s for architectures applied in psychology and cognitive science.",
+    "mnemonic": "Many parallel electrical wires connecting glowing brain models together.",
+    "source_quote": "for which the term connectionist or parallel distributed processing was often used (Feldman and Ballard 1982, Smolensky 1988).",
     "xp_reward": 5
   },
   {
     "id": "ch_10",
     "subject_id": "subj_2",
-    "question": "How does exponential loss penalize errors when training a model?",
+    "question": "By which decade did larger neural networks begin to be applied to practical language processing tasks like handwriting and speech recognition?",
     "options": [
       {
         "id": "a",
-        "text": "It would rather make many small mistakes than one large one."
+        "text": "The 1950s"
       },
       {
         "id": "b",
-        "text": "It penalizes small mistakes more severely than one large mistake."
+        "text": "The 1970s"
       },
       {
         "id": "c",
-        "text": "It treats one large mistake and many small mistakes completely identically."
+        "text": "The 1990s"
       },
       {
         "id": "d",
-        "text": "It charges zero penalty for any incorrect prediction regardless of confidence."
+        "text": "The 2010s"
       }
     ],
-    "correct_option_id": "a",
-    "explanation": "Exponential loss penalizes large confidently wrong errors severely, leading the model to prefer multiple minor errors instead.",
-    "mnemonic": "A gigantic iron anvil falling next to a pile of ten tiny plastic thimbles.",
-    "source_quote": "A model trained under it would rather make many small mistakes than one large one.",
+    "correct_option_id": "c",
+    "explanation": "By the 1990s, larger neural networks started being applied to practical language processing tasks such as handwriting and speech recognition.",
+    "mnemonic": "A digital desk calendar showing 1990 next to a handwritten letter and a microphone.",
+    "source_quote": "By the 1990s larger neural networks began to be applied to many practical language processing tasks as well, like handwriting recognition (LeCun et al. 1989) and speech recognition",
     "xp_reward": 5
   },
   {
     "id": "ch_11",
     "subject_id": "subj_3",
-    "question": "How is underfitting detected according to the document?",
+    "question": "During which decade did a major revival for the neural network field occur due to practical tools like error backpropagation becoming widespread?",
     "options": [
       {
         "id": "a",
-        "text": "By a large gap between training accuracy and test accuracy"
+        "text": "1950s"
       },
       {
         "id": "b",
-        "text": "By low training accuracy"
+        "text": "1960s"
       },
       {
         "id": "c",
-        "text": "By high variance in individual fold scores"
+        "text": "1980s"
       },
       {
         "id": "d",
-        "text": "By low computation time during model fitting"
+        "text": "1990s"
       }
     ],
-    "correct_option_id": "b",
-    "explanation": "Underfitting occurs when the model family is not rich enough to fit the data, which is revealed by low training accuracy.",
-    "mnemonic": "A toy train resting on a low wooden shelf labeled 'Training Accuracy'.",
-    "source_quote": "Underfitting is revealed by low training accuracy.",
+    "correct_option_id": "c",
+    "explanation": "The text states that a major revival for the field didn't come until the 1980s with practical tools like error backpropagation.",
+    "mnemonic": "An 80s boombox plays error backpropagation tapes loudly in a room.",
+    "source_quote": "a major revival for the field didn't come until the 1980s, when practical tools for building deeper networks like error backpropagation became widespread",
     "xp_reward": 5
   },
   {
     "id": "ch_12",
     "subject_id": "subj_3",
-    "question": "What is the primary computational downside of K-fold cross-validation compared to a single train/test split?",
+    "question": "What alternative term was often used for neural network and related architectures developed for applications in psychology and cognitive science?",
     "options": [
       {
         "id": "a",
-        "text": "It requires K model fits instead of one fit."
+        "text": "Connectionist or parallel distributed processing"
       },
       {
         "id": "b",
-        "text": "It reduces the training set size to zero."
+        "text": "Symbolic propositional logic systems"
       },
       {
         "id": "c",
-        "text": "It overestimates the best number of estimators."
+        "text": "Linear predictive coding networks"
       },
       {
         "id": "d",
-        "text": "It prevents calculating individual fold losses."
+        "text": "Sequential heuristic automata"
       }
     ],
     "correct_option_id": "a",
-    "explanation": "Cross-validation requires fitting the model K separate times rather than once, which increases the required computation.",
-    "mnemonic": "K heavy iron gears stacked high on top of a single computer processor.",
-    "source_quote": "The price is computation: K fits instead of one.",
+    "explanation": "The term connectionist or parallel distributed processing was often used for architectures developed in psychology and cognitive science.",
+    "mnemonic": "A brain connecting parallel wires distributes glowing processing nodes everywhere.",
+    "source_quote": "for which the term connectionist or parallel distributed processing was often used",
     "xp_reward": 5
   },
   {
     "id": "ch_13",
     "subject_id": "subj_3",
-    "question": "Why is cross-validation omitted entirely when training neural networks according to the document?",
+    "question": "Whose work introduced the idea of distributed representations in 1986 as foundational to modern neural network work?",
     "options": [
       {
         "id": "a",
-        "text": "Neural networks do not experience overfitting on training data."
+        "text": "J. L. Elman"
       },
       {
         "id": "b",
-        "text": "Data cannot be partitioned into K pieces for deep architectures."
+        "text": "G. E. Hinton"
       },
       {
         "id": "c",
-        "text": "Fold loss scores cannot be calculated using model predictions."
+        "text": "P. Smolensky"
       },
       {
         "id": "d",
-        "text": "It is too expensive because a single fit can take ten minutes or ten hours."
+        "text": "M. Minsky"
       }
     ],
-    "correct_option_id": "d",
-    "explanation": "Fitting a single neural network takes minutes or hours, making K-fold cross-validation computationally prohibitive.",
-    "mnemonic": "A thick black network cable attached to a giant brass price tag.",
-    "source_quote": "For neural networks, where one fit may take ten minutes or ten hours, we will not use cross-validation at all; it is too expensive.",
+    "correct_option_id": "b",
+    "explanation": "Hinton introduced the idea of distributed representations in 1986.",
+    "mnemonic": "A hint of paint distributes colorful representations across a canvas.",
+    "source_quote": "including the ideas of distributed representations (Hinton, 1986)",
     "xp_reward": 5
   },
   {
     "id": "ch_14",
     "subject_id": "subj_3",
-    "question": "What systematic effect does a small K value in K-fold cross-validation have on regularization constants?",
+    "question": "Which principle or technique was introduced by P. Smolensky in 1990 for compositionality in connectionist systems?",
     "options": [
       {
         "id": "a",
-        "text": "It underestimates the best regularization constants."
+        "text": "Recurrent networks"
       },
       {
         "id": "b",
-        "text": "It overestimates optimal tree depth and tree count."
+        "text": "Distributed representations"
       },
       {
         "id": "c",
-        "text": "It overestimates the best regularization constants."
+        "text": "Error backpropagation"
       },
       {
         "id": "d",
-        "text": "It completely removes bias toward simpler models."
+        "text": "The use of tensors for compositionality"
       }
     ],
-    "correct_option_id": "c",
-    "explanation": "Because models trained on less data overfit more, cross-validation with a small K overcompensates by overestimating the best regularization constants.",
-    "mnemonic": "A tiny letter K pushing up a heavy wooden regularization balance beam.",
-    "source_quote": "So small K underestimates the best number of estimators and depth, and overestimates the best regularization constants",
+    "correct_option_id": "d",
+    "explanation": "Smolensky introduced the use of tensors for compositionality in 1990.",
+    "mnemonic": "Ten toy dinosaurs compose a strict line on a desk.",
+    "source_quote": "the use of tensors for compositionality (Smolensky, 1990)",
     "xp_reward": 5
   },
   {
     "id": "ch_15",
     "subject_id": "subj_3",
-    "question": "What detail does the document recommend evaluating alongside the average cross-validation score?",
+    "question": "By what decade did larger neural networks begin to be applied to practical language processing tasks like handwriting and speech recognition?",
     "options": [
       {
         "id": "a",
-        "text": "The total number of parameters in the model"
+        "text": "1960s"
       },
       {
         "id": "b",
-        "text": "The individual fold scores C_1, ..., C_K"
+        "text": "1970s"
       },
       {
         "id": "c",
-        "text": "The execution time of single test predictions"
+        "text": "1980s"
       },
       {
         "id": "d",
-        "text": "The training loss on the combined dataset"
+        "text": "1990s"
       }
     ],
-    "correct_option_id": "b",
-    "explanation": "Checking individual fold scores reveals whether a model's performance swings wildly across different data partitions.",
-    "mnemonic": "A teacher inspecting paper cards labeled C1 through CK spread on a table.",
-    "source_quote": "A good suggestion from class: look at the individual fold scores $C_{1},...,C_{K}$ not just their mean.",
+    "correct_option_id": "d",
+    "explanation": "Larger neural networks began to be applied to practical language processing tasks like handwriting and speech recognition by the 1990s.",
+    "mnemonic": "A 90s digital clock sits next to a handwritten speech note.",
+    "source_quote": "By the 1990s larger neural networks began to be applied to many practical language processing tasks as well, like handwriting recognition... and speech recognition",
     "xp_reward": 5
   },
   {
     "id": "ch_16",
     "subject_id": "subj_4",
-    "question": "What output value does the sigmoid function produce when given an input score of z = 0?",
+    "question": "Which researcher introduced the foundational idea of distributed representations in 1986?",
     "options": [
       {
         "id": "a",
-        "text": "1/2"
+        "text": "J. L. Elman"
       },
       {
         "id": "b",
-        "text": "0"
+        "text": "G. E. Hinton"
       },
       {
         "id": "c",
-        "text": "1"
+        "text": "P. Smolensky"
       },
       {
         "id": "d",
-        "text": "-1"
+        "text": "F. Rosenblatt"
       }
     ],
-    "correct_option_id": "a",
-    "explanation": "When the linear score z is zero, the sigmoid function evaluates to 1/2, representing complete uncertainty.",
-    "mnemonic": "A wooden ruler balanced horizontally on a silver coin split at the half mark.",
-    "source_quote": "And σ(0)=1/2: a score of zero means \"I have no idea.\"",
+    "correct_option_id": "b",
+    "explanation": "G. E. Hinton is credited with introducing the idea of distributed representations in 1986.",
+    "mnemonic": "Geoffrey Hinton hands out a distribution map inside an office.",
+    "source_quote": "including the ideas of distributed representations (Hinton, 1986)",
     "xp_reward": 5
   },
   {
     "id": "ch_17",
     "subject_id": "subj_4",
-    "question": "In scikit-learn's logistic regression implementation, what does calling model.predict(X) return?",
+    "question": "Whose 1990 work introduced recurrent networks as a foundational technique for modern work?",
     "options": [
       {
         "id": "a",
-        "text": "Raw linear z-scores"
+        "text": "J. L. Elman"
       },
       {
         "id": "b",
-        "text": "Hard labels obtained by thresholding the probability at 0.5"
+        "text": "P. Smolensky"
       },
       {
         "id": "c",
-        "text": "Continuous probability values between 0 and 1"
+        "text": "G. E. Hinton"
       },
       {
         "id": "d",
-        "text": "The gradient vectors of the loss function"
+        "text": "W. S. McCulloch"
       }
     ],
-    "correct_option_id": "b",
-    "explanation": "The model.predict(X) method returns hard classification labels by thresholding predicted probabilities at 0.5.",
-    "mnemonic": "A heavy brass stamp presses hard letters onto a cold stone doorstep threshold.",
-    "source_quote": "In sklearn: model.predict (X) returns hard labels, which for logistic regression means thresholding the probability at 0.5",
+    "correct_option_id": "a",
+    "explanation": "J. L. Elman introduced recurrent networks in his 1990 work.",
+    "mnemonic": "Elmo loops a running clock around a network cable.",
+    "source_quote": "recurrent networks (Elman, 1990)",
     "xp_reward": 5
   },
   {
     "id": "ch_18",
     "subject_id": "subj_4",
-    "question": "Which loss function is minimized by model.fit when executing logistic regression?",
+    "question": "According to the historical overview of foundational principles, what application of tensors was introduced by Smolensky in 1990?",
     "options": [
       {
         "id": "a",
-        "text": "Mean squared error loss"
+        "text": "Speech recognition"
       },
       {
         "id": "b",
-        "text": "Hinge loss"
+        "text": "Handwriting recognition"
       },
       {
         "id": "c",
-        "text": "Cross-entropy loss"
+        "text": "Compositionality"
       },
       {
         "id": "d",
-        "text": "Absolute L1 loss"
+        "text": "Error backpropagation"
       }
     ],
     "correct_option_id": "c",
-    "explanation": "Fitting a logistic regression model optimizes parameters by minimizing cross-entropy loss over training data.",
-    "mnemonic": "A wooden cross sitting on top of an iron compass inside a toolbox.",
-    "source_quote": "This expression is the cross-entropy loss. It is what model.fit minimizes when you run LogisticRegression",
+    "explanation": "Smolensky introduced the use of tensors for compositionality in 1990.",
+    "mnemonic": "A small lens focuses tensor blocks onto a composite puzzle.",
+    "source_quote": "the use of tensors for compositionality (Smolensky, 1990).",
     "xp_reward": 5
   },
   {
     "id": "ch_19",
     "subject_id": "subj_4",
-    "question": "According to the document, at what predicted probability value does the decision boundary occur in logistic regression?",
+    "question": "During which decade did a major revival for the field of neural networks occur with the widespread use of error backpropagation?",
     "options": [
       {
         "id": "a",
-        "text": "0"
+        "text": "1940s"
       },
       {
         "id": "b",
-        "text": "0.1"
+        "text": "1960s"
       },
       {
         "id": "c",
-        "text": "1.0"
+        "text": "1990s"
       },
       {
         "id": "d",
-        "text": "1/2"
+        "text": "1980s"
       }
     ],
     "correct_option_id": "d",
-    "explanation": "The decision boundary represents points where the model has no opinion, occurring where predicted probability equals 1/2.",
-    "mnemonic": "A wooden boundary fence cuts through the center of a half-filled iron bowl.",
-    "source_quote": "The decision boundary is where the model has no opinion: p^=1/2.",
+    "explanation": "A major revival for neural networks happened in the 1980s when error backpropagation became widespread.",
+    "mnemonic": "An old arcade game from the eighties shows arrows bouncing backward.",
+    "source_quote": "a major revival for the field didn't come until the 1980s, when practical tools for building deeper networks like error backpropagation became widespread",
     "xp_reward": 5
   },
   {
     "id": "ch_20",
-    "subject_id": "subj_4",
-    "question": "When training an unregularized logistic regression model on perfectly linearly separable data, what happens to the estimated coefficients?",
+    "subject_id": "subj_5",
+    "question": "By the 1990s, larger neural networks began to be applied to practical language processing tasks, such as which of the following?",
     "options": [
       {
         "id": "a",
-        "text": "They rapidly shrink toward zero"
+        "text": "Handwriting recognition and speech recognition"
       },
       {
         "id": "b",
-        "text": "They are pushed toward infinity"
+        "text": "Machine translation and syntactic parsing"
       },
       {
         "id": "c",
-        "text": "They constantly oscillate between positive and negative values"
+        "text": "Optical character recognition and text summarization"
       },
       {
         "id": "d",
-        "text": "They converge strictly to zero"
+        "text": "Sentiment analysis and spelling correction"
       }
     ],
-    "correct_option_id": "b",
-    "explanation": "On linearly separable data, minimizing cross-entropy continuously decreases loss by scaling coefficients up toward infinity.",
-    "mnemonic": "An endless steel tape measure stretches outward beyond a mountain peak into space.",
-    "source_quote": "So the loss keeps decreasing, and fit will push the coefficients toward infinity.",
+    "correct_option_id": "a",
+    "explanation": "Larger neural networks were applied to practical language processing tasks like handwriting recognition and speech recognition by the 1990s.",
+    "mnemonic": "A hand writing on paper while a microphone records speech.",
+    "source_quote": "By the 1990s larger neural networks began to be applied to many practical language processing tasks as well, like handwriting recognition",
     "xp_reward": 5
   },
   {
     "id": "ch_21",
     "subject_id": "subj_5",
-    "question": "According to the bias-variance trade-off, how do boosting and bagging alter model bias and variance?",
+    "question": "Which specific work demonstrated the application of neural networks to handwriting recognition, referenced as occurring in 1989?",
     "options": [
       {
         "id": "a",
-        "text": "Boosting reduces bias at the cost of variance, while bagging reduces variance at the cost of bias."
+        "text": "Elman (1990)"
       },
       {
         "id": "b",
-        "text": "Boosting reduces variance at the cost of bias, while bagging reduces bias at the cost of variance."
+        "text": "LeCun et al. (1989)"
       },
       {
         "id": "c",
-        "text": "Both boosting and bagging reduce bias without affecting variance."
+        "text": "Morgan and Bourlard (1990)"
       },
       {
         "id": "d",
-        "text": "Both boosting and bagging reduce variance without affecting bias."
+        "text": "Rumelhart et al. (1986)"
       }
     ],
-    "correct_option_id": "a",
-    "explanation": "Boosting iteratively fits weak models to lower bias, whereas bagging averages multiple trees to lower variance.",
-    "mnemonic": "A boosting rocket burns bias fuel while a bagged net catches swinging variance weights.",
-    "source_quote": "In the language of the bias-variance trade-off: boosting reduces bias at the cost of variance; bagging reduces variance at the cost of bias.",
+    "correct_option_id": "b",
+    "explanation": "LeCun et al. (1989) is cited for handwriting recognition work leading into the 1990s applications.",
+    "mnemonic": "A French chef writing zip codes with a pen.",
+    "source_quote": "handwriting recognition (LeCun et al. 1989)",
     "xp_reward": 5
   },
   {
     "id": "ch_22",
     "subject_id": "subj_5",
-    "question": "Which third hyperparameter does gradient boosting introduce beyond tree depth and the number of estimators?",
+    "question": "According to the text, who published work on speech recognition in 1990 using multilayer perceptrons with hidden Markov models?",
     "options": [
       {
         "id": "a",
-        "text": "Maximum feature subsample ratio"
+        "text": "Minsky and Papert"
       },
       {
         "id": "b",
-        "text": "L1 regularization coefficient"
+        "text": "Rumelhart and McClelland"
       },
       {
         "id": "c",
-        "text": "Step size, also called the learning rate"
+        "text": "Morgan and Bourlard"
       },
       {
         "id": "d",
-        "text": "Minimum leaf node weight"
+        "text": "Widrow and Hoff"
       }
     ],
     "correct_option_id": "c",
-    "explanation": "Gradient boosting adds step size (learning rate) as a third hyperparameter alongside tree depth and estimator count.",
-    "mnemonic": "A golden ruler labeled learning rate measures steps between wooden tree estimators.",
-    "source_quote": "Gradient boosting adds a third, the step size n, also called the learning rate.",
+    "explanation": "Morgan and Bourlard (1990) are credited for speech recognition applications of neural networks in 1990.",
+    "mnemonic": "Two scientists talking into a microphone attached to a computer.",
+    "source_quote": "speech recognition (Morgan and Bourlard 1990).",
     "xp_reward": 5
   },
   {
     "id": "ch_23",
     "subject_id": "subj_5",
-    "question": "How is stacking conceptually defined in relation to feature engineering?",
+    "question": "What technological improvements and advances made it possible to train even larger and deeper networks by the early 2000s?",
     "options": [
       {
         "id": "a",
-        "text": "Stacking is hyperparameter tuning where features are replaced by target labels."
+        "text": "Cloud computing and distributed databases"
       },
       {
         "id": "b",
-        "text": "Stacking is feature engineering where the engineered feature is another model's prediction."
+        "text": "Internet bandwidth and web scrapers"
       },
       {
         "id": "c",
-        "text": "Stacking is loss minimization where residual errors are appended as sample weights."
+        "text": "Quantum processors and optical storage"
       },
       {
         "id": "d",
-        "text": "Stacking is data imputation where missing values are replaced by tree predictions."
+        "text": "Computer hardware, optimization, and training techniques"
       }
     ],
-    "correct_option_id": "b",
-    "explanation": "Stacking acts as feature engineering by using predictions generated from one model as input columns for subsequent models.",
-    "mnemonic": "A glass column filled with printed model predictions is attached to a database desk.",
-    "source_quote": "stacking is feature engineering where the engineered feature is another model's prediction.",
+    "correct_option_id": "d",
+    "explanation": "Improvements in computer hardware and advances in optimization and training techniques enabled larger and deeper networks by the early 2000s.",
+    "mnemonic": "A computer processor chip resting next to an optimization book and a training dumbbell.",
+    "source_quote": "By the early 2000s, improvements in computer hardware and advances in optimization and training techniques made it possible to train even larger and deeper networks",
     "xp_reward": 5
   },
   {
     "id": "ch_24",
     "subject_id": "subj_5",
-    "question": "What standard fitting procedure does gradient boosting reduce to when evaluated under squared loss?",
+    "question": "The transition to training larger and deeper networks by the early 2000s led to which modern term?",
     "options": [
       {
         "id": "a",
-        "text": "Bootstrap sample reweighting"
+        "text": "Deep learning"
       },
       {
         "id": "b",
-        "text": "Exponential margin scaling"
+        "text": "Connectionist networks"
       },
       {
         "id": "c",
-        "text": "Cross-entropy derivative mapping"
+        "text": "Parallel distributed processing"
       },
       {
         "id": "d",
-        "text": "Residual fitting"
-      }
-    ],
-    "correct_option_id": "d",
-    "explanation": "Because the negative gradient of squared loss is proportional to the residual error, gradient boosting simplifies to residual fitting.",
-    "mnemonic": "A silver gradient ramp slides directly into a labeled residual fitting box.",
-    "source_quote": "Gradient boosting is the general method; residual fitting is what it does for squared loss.",
-    "xp_reward": 5
-  },
-  {
-    "id": "ch_25",
-    "subject_id": "subj_5",
-    "question": "What is the document's rule of thumb regarding model depth and target problem for bagging versus boosting?",
-    "options": [
-      {
-        "id": "a",
-        "text": "Bag deep trees to reduce overfitting, but boost shallow trees to reduce underfitting."
-      },
-      {
-        "id": "b",
-        "text": "Boost deep trees to reduce overfitting, but bag shallow trees to reduce underfitting."
-      },
-      {
-        "id": "c",
-        "text": "Bag shallow trees to reduce variance, but boost deep trees to reduce bias."
-      },
-      {
-        "id": "d",
-        "text": "Stack shallow trees to reduce overfitting, but bag complex trees to reduce underfitting."
+        "text": "Propositional logic modeling"
       }
     ],
     "correct_option_id": "a",
-    "explanation": "The recommended practice is to bag deep trees to combat overfitting, while boosting shallow trees to fix underfitting.",
-    "mnemonic": "Deep tree roots placed in bags reduce overflow while shallow tree sprouts boost upward.",
-    "source_quote": "Rule of thumb: bag to reduce overfitting, generally with deep trees; boost and stack to reduce underfitting, generally boosting shallow trees, but stacking anything.",
+    "explanation": "The ability to train larger and deeper networks led directly to the modern term deep learning.",
+    "mnemonic": "A submarine diving deep into blue ocean water holding a learning textbook.",
+    "source_quote": "leading to the modern term deep learning",
     "xp_reward": 5
   }
 ]

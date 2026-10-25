@@ -1,9 +1,14 @@
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-from app import gemini
-from app.config import XP_PER_CHALLENGE
-from app.schemas import (
+from . import gemini
+from .config import XP_PER_CHALLENGE
+from .schemas import (
     LearningPathResponse, Progress, PublicChallenge, PublicSubject, StoredChallenge,
 )
 
@@ -14,11 +19,17 @@ def build_learning_path(store_name: str, focus: str | None = None):
     - the full challenges WITH answers (kept server-side / for your own checks)"""
 
     # Pass 1: find the main topics of the whole document
+    logger.info("Extrayendo temas del documento...")
+    start = time.perf_counter()
     topics = gemini.extract_topics(store_name, focus).topics
+    logger.info("Temas extraidos (%d) en %.1fs: %s", len(topics), time.perf_counter() - start, topics)
 
     # Pass 2: one RAG query per topic, run in parallel to cut total time
+    logger.info("Generando preguntas en paralelo para %d temas...", len(topics))
+    start = time.perf_counter()
     with ThreadPoolExecutor(max_workers=len(topics)) as pool:
         generated = list(pool.map(lambda t: gemini.generate_subject(store_name, t), topics))
+    logger.info("Preguntas generadas para %d temas en %.1fs", len(generated), time.perf_counter() - start)
 
     subjects: list[PublicSubject] = []
     stored: list[StoredChallenge] = []
@@ -58,4 +69,5 @@ def build_learning_path(store_name: str, focus: str | None = None):
         subjects=subjects,
         progress=Progress(xp=0, xp_to_unlock=100, adventure_unlocked=False),
     )
+    logger.info("Learning path construido: %d temas, %d preguntas", len(subjects), len(stored))
     return response, stored
