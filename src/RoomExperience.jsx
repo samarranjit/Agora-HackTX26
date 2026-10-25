@@ -1,18 +1,15 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { createRoomScene, PEDESTALS, ROOM_SIZE } from './roomScene.js'
 import { createPlayerControls, EYE_HEIGHT } from './playerControls.js'
-import { createCourtyardScene } from './courtyardScene.js'
 import { createPlayerMotion, MAX_STAMINA } from './playerMotion.js'
 import { createSwordProp } from './swordProp.js'
 import AdventureHud from './AdventureHud.jsx'
-import { nearGoblin } from './forestGoblin.js'
 import { createForestScene, createCastleHallScene } from './forestScene.js'
-import { nearbyForestTarget, nearbyHallTarget, approachingForestEncounter } from './forestLayout.js'
+import { nearbyForestTarget, nearbyHallTarget } from './forestLayout.js'
 import { getForestTarget } from './game/forestContent.js'
 import { createWalkFeel } from './walkFeel.js'
 
-export default function RoomExperience({ memories, active, unlocked, session, onDoor, onPause, onExit, onDiscover, onGoblin, backendStatus, signedIn, environment = 'indoor', hearts, controlRef, forestRun, forestPresentation, soundRef, onForestInteract, onForestEncounter, onForestBridgeLowered, onForestEnterCastle }) {
+export default function RoomExperience({ active, session, onPause, backendStatus, environment = 'forest', controlRef, forestRun, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle }) {
   const mountRef = useRef(null)
   const controlsRef = useRef(null)
   const propsRef = useRef({})
@@ -20,10 +17,9 @@ export default function RoomExperience({ memories, active, unlocked, session, on
   const [nearby, setNearby] = useState(null)
   const [vitals, setVitals] = useState({ stamina: MAX_STAMINA, exhausted: false })
   const [respawned, setRespawned] = useState(false)
-  const outdoor = environment === 'courtyard'
   const forest = environment === 'forest'
   const hall = environment === 'castle'
-  const adventuring = outdoor || forest || hall
+  const adventuring = true
 
   useImperativeHandle(controlRef, () => ({
     enter() {
@@ -34,12 +30,12 @@ export default function RoomExperience({ memories, active, unlocked, session, on
   }), [])
 
   useEffect(() => {
-    propsRef.current = { active, unlocked, onDoor, onPause, onExit, onDiscover, onGoblin, forestRun, onForestInteract, onForestEncounter, onForestBridgeLowered, onForestEnterCastle }
-  }, [active, unlocked, onDoor, onPause, onExit, onDiscover, onGoblin, forestRun, onForestInteract, onForestEncounter, onForestBridgeLowered, onForestEnterCastle])
+    propsRef.current = { active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle }
+  }, [active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle])
 
   useEffect(() => {
     const mount = mountRef.current
-    const room = forest ? createForestScene({ spawnId: propsRef.current.forestRun?.spawnId, layout: propsRef.current.forestRun?.layout }) : hall ? createCastleHallScene() : outdoor ? createCourtyardScene() : createRoomScene(memories)
+    const room = forest ? createForestScene({ spawnId: propsRef.current.forestRun?.spawnId, layout: propsRef.current.forestRun?.layout }) : createCastleHallScene()
     const camera = new THREE.PerspectiveCamera(70, mount.clientWidth / mount.clientHeight, 0.08, adventuring ? 220 : 50)
     camera.rotation.order = 'YXZ'
     camera.position.set(room.spawn?.x ?? 0, (room.spawn?.y ?? 0) + EYE_HEIGHT, room.spawn?.z ?? 3.6)
@@ -77,7 +73,6 @@ export default function RoomExperience({ memories, active, unlocked, session, on
     let reducedMotion = motionPreference.matches
     const preferenceChanged = (event) => { reducedMotion = event.matches }
     motionPreference.addEventListener('change', preferenceChanged)
-    const nearDoor = () => Math.hypot(camera.position.x, camera.position.z - ROOM_SIZE / 2) < 2.3
     const physicalPosition = () => ({ x: camera.position.x - swayX, y: camera.position.y - bobOffset, z: camera.position.z - swayZ })
     const forestTarget = () => forest ? nearbyForestTarget(physicalPosition(), propsRef.current.forestRun) : hall ? nearbyHallTarget(physicalPosition()) : null
     const controls = createPlayerControls({
@@ -91,13 +86,8 @@ export default function RoomExperience({ memories, active, unlocked, session, on
         noticeTimer = setTimeout(() => setRespawned(false), 3500)
       },
       onInteract: () => {
-        if (forest || hall) {
-          const targetId = forestTarget()
-          if (targetId) controls.suspend(() => propsRef.current.onForestInteract?.(targetId))
-          return
-        }
-        if (outdoor && nearGoblin(camera.position)) controls.suspend(propsRef.current.onGoblin)
-        if (!outdoor && nearDoor() && !propsRef.current.unlocked && memories.length) controls.suspend(propsRef.current.onDoor)
+        const targetId = forestTarget()
+        if (targetId) controls.suspend(() => propsRef.current.onForestInteract?.(targetId))
       },
       onPause: () => propsRef.current.onPause(),
       onLockChange: setLocked,
@@ -123,7 +113,6 @@ export default function RoomExperience({ memories, active, unlocked, session, on
       const now = performance.now()
       const dt = Math.min((now - lastTime) / 1000, 0.05)
       lastTime = now
-      const isOpen = propsRef.current.unlocked
       // Remove last frame's presentation offset before physics and all proximity checks.
       camera.position.y -= bobOffset
       camera.position.x -= swayX; camera.position.z -= swayZ
@@ -132,13 +121,11 @@ export default function RoomExperience({ memories, active, unlocked, session, on
       room.update(dt, { ...propsRef.current, playerPosition: motion?.position, reducedMotion })
       controls.update(dt, propsRef.current)
       if (adventuring && controls.active) {
-        const nextNearby = forest || hall ? forestTarget() : nearGoblin(camera.position) ? 'goblin' : Math.abs(camera.position.x) < 4 && camera.position.z < -5 ? 'bridge' : null
+        const nextNearby = forestTarget()
         if (nextNearby !== lastNearby) {
           lastNearby = nextNearby; setNearby(nextNearby)
           if (getForestTarget(nextNearby) && !(nextNearby === 'dragon' && propsRef.current.forestRun?.dragonDefeated)) soundRef?.current?.play('approach')
         }
-        const encounter = forest && approachingForestEncounter(camera.position, propsRef.current.forestRun)
-        if (encounter) controls.suspend(() => propsRef.current.onForestEncounter?.(encounter))
         if (forest && propsRef.current.forestRun.bridgeState === 'lowered' && camera.position.z < -32.4 && !exited) {
           exited = true
           controls.suspend(() => propsRef.current.onForestEnterCastle?.())
@@ -148,22 +135,6 @@ export default function RoomExperience({ memories, active, unlocked, session, on
           hudElapsed = 0
           const stamina = Math.round(motion.stamina)
           setVitals((old) => old.stamina === stamina && old.exhausted === motion.exhausted ? old : { stamina, exhausted: motion.exhausted })
-        }
-      } else if (!adventuring && controls.active) {
-        let nextNearby = nearDoor() ? 'door' : null
-        let nearest = 2.2
-        PEDESTALS.forEach((spot, i) => {
-          const distance = Math.hypot(camera.position.x - spot.x, camera.position.z - spot.z)
-          if (memories[i] && distance < nearest) { nearest = distance; nextNearby = memories[i].id }
-        })
-        if (nextNearby !== lastNearby) {
-          lastNearby = nextNearby
-          setNearby(nextNearby)
-          if (nextNearby && nextNearby !== 'door') propsRef.current.onDiscover(nextNearby)
-        }
-        if (isOpen && camera.position.z > ROOM_SIZE / 2 + 0.8 && !exited) {
-          exited = true
-          controls.suspend(propsRef.current.onExit)
         }
       }
       if (forest || hall) {
@@ -193,31 +164,21 @@ export default function RoomExperience({ memories, active, unlocked, session, on
       renderer.forceContextLoss()
       canvas.remove()
     }
-  }, [memories, session, outdoor, forest, hall, adventuring, soundRef])
+  }, [session, forest, hall, adventuring, soundRef])
 
   useEffect(() => { controlsRef.current?.setActive(active) }, [active])
 
   const lockMouse = () => controlsRef.current?.lockMouse()
-  const memory = memories.find((item) => item.id === nearby)
   const fairytaleItem = forestRun && getForestTarget(nearby)
   return (
     <>
       <div className="palace-stage" ref={mountRef} inert={!active} />
       {active && <div className="palace-hud">
         <div className="palace-crosshair" aria-hidden="true" />
-        {adventuring && <AdventureHud hearts={hearts} forestRun={forestRun} forestPresentation={forestPresentation} backendStatus={backendStatus} signedIn={signedIn} stamina={vitals.stamina} exhausted={vitals.exhausted} nearBridge={nearby === 'bridge' || nearby === 'forest-gate'} respawned={respawned} />}
-        {fairytaleItem && <div key={nearby} className="door-prompt forest-interaction" role="status"><strong>{forestRun.accountMode && fairytaleItem.kind === 'combat' ? 'Palace guardian marker' : fairytaleItem.name}</strong><p>{forestRun.accountMode ? fairytaleItem.kind === 'combat' ? 'Press E to challenge the next server-selected guardian.' : 'Press E to practice your study PDF. Account rewards come from the server.' : nearby === 'dragon' && forestRun.dragonDefeated ? 'The Storykeeper is at peace. Press E to revisit your victory.' : `Press E to ${fairytaleItem.kind === 'combat' ? 'face this encounter' : 'collect'} · ${fairytaleItem.questions.length}-question ${fairytaleItem.tier === 'starter' ? 'starter encounter' : 'challenge'}${fairytaleItem.kind === 'combat' ? ' · No help' : ''}`}</p></div>}
+        <AdventureHud backendStatus={backendStatus} stamina={vitals.stamina} exhausted={vitals.exhausted} nearBridge={nearby === 'forest-gate'} respawned={respawned} />
+        {fairytaleItem && <div key={nearby} className="door-prompt forest-interaction" role="status"><strong>{fairytaleItem.name}</strong><p>Press E to {fairytaleItem.kind === 'combat' ? 'face this challenger' : 'continue this story'}.</p></div>}
         {hall && nearby === 'princess' && <div className="door-prompt" role="status"><strong>The Storywood Princess</strong><p>Press E to speak with the princess.</p></div>}
         {hall && nearby === 'hall-exit' && <div className="door-prompt" role="status"><strong>The forest awaits</strong><p>Press E to return to the castle bridge.</p></div>}
-        {outdoor && nearby === 'goblin' && <div className="door-prompt" role="status"><strong>Forest Goblin — Press E to challenge.</strong><p>The backend chooses the next guardian and checks your eligibility.</p></div>}
-        {!adventuring && memory && <article className="memory-label" aria-live="polite">
-          <span className="palace-kicker">Memory {memories.indexOf(memory) + 1} / 3</span>
-          <h2>{memory.title}</h2><p>{memory.fact}</p><p className="memory-cue">{memory.cue}</p>
-        </article>}
-        {!adventuring && nearby === 'door' && <div className={'door-prompt ' + (unlocked ? 'success' : '')} role="status">
-          <strong>{unlocked ? 'Door unlocked — walk through!' : 'Recall gate · Locked'}</strong>
-          <p>{unlocked ? 'The green doorway leads to the exit landing.' : 'Press E to answer a question and unlock the door.'}</p>
-        </div>}
         <div className={'palace-hint' + (adventuring ? ' adventure-hint' : '')}><strong>WASD</strong> move · <strong>{locked ? 'Mouse' : 'Drag'}</strong> look · {adventuring ? <><strong>Space</strong> jump · <strong>Shift</strong> sprint · <strong>E</strong> interact</> : <><strong>E</strong> at door</>} · <strong>Esc</strong> pause</div>
         {!locked && <button className="palace-relock" onClick={lockMouse}>Resume mouse look</button>}
       </div>}

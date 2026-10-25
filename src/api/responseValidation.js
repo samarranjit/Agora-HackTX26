@@ -25,7 +25,7 @@ export function validStudyPack(v) {
 export function validResponse(path, data, method = 'GET') {
   if (path === '/api/auth/logout') return data === null
   if (path === '/healthz') return fields(data, { status: string, game_master: string })
-  if (path === '/api/auth/login') return fields(data, { access_token: string, token_type: string, expires_at: string })
+  if (path === '/api/auth/login') return fields(data, { access_token: (v) => string(v) && !!v.trim(), token_type: (v) => v === 'bearer', expires_at: string })
   if (path === '/api/auth/register') return fields(data, { user_id: string, username: string })
   if (path === '/api/me/status') return fields(data, status)
   if (path === '/api/me/state') return fields(data, { ...status, username: string, rules: object, villains: Array.isArray })
@@ -39,6 +39,7 @@ export function validResponse(path, data, method = 'GET') {
   if (path === '/api/study-packs') return method === 'POST' ? validStudyPack(data) : fields(data, { study_packs: (items) => Array.isArray(items) && items.every(validStudyPack) })
   if (path.startsWith('/api/study-packs/')) return validStudyPack(data)
   if (path === '/api/documents' || path.startsWith('/api/documents/')) return fields(data, { document_id: string, status: (v) => ['pending', 'processing', 'ready', 'failed'].includes(v) })
-  if (path === '/api/question-sets' || path.startsWith('/api/question-sets/')) return fields(data, { question_set_id: string, mode: string, status: (v) => ['pending', 'processing', 'ready', 'failed'].includes(v) })
+  if (path.startsWith('/api/question-sets/')) return fields(data, { question_set_id: string, status: string, document_ids: (v) => Array.isArray(v) && v.every(string), questions: (v) => Array.isArray(v) && v.every((q) => fields(q, { question_id: string })) })
+  if (path === '/api/question-sets') return fields(data, { question_set_id: string, mode: string, status: (v) => ['pending', 'processing', 'ready', 'failed'].includes(v) })
   return object(data)
 }

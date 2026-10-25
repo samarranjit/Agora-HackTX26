@@ -1,30 +1,24 @@
 import { useState } from 'react'
+import PalaceDialog from './PalaceDialog.jsx'
 
-export function ServerError({ error }) {
-  return error ? <div className="api-error" role="alert"><strong>{error.message}</strong>{error.code && <small>{error.code}{error.status ? ` · HTTP ${error.status}` : ''}</small>}{Array.isArray(error.details) && error.details.map((d, i) => <p key={i}>{d.field}: {d.problem}</p>)}</div> : null
-}
+export function ServerError({ error }) { return error ? <p className="api-error" role="alert">{error.message}</p> : null }
 
-export function PlayerStatus({ state }) {
-  const s = state.status
-  return <div className="backend-status" aria-live="polite">{s ? <>
-    <strong>{state.username} · {s.xp} XP · Health {s.health}/{s.max_health}</strong>
-    <span>{s.adventure_completed ? 'Adventure complete' : s.adventure_unlocked ? 'Adventure unlocked' : 'Adventure locked'} · {s.location}</span>
-    {state.player?.rules && <small>Adventure unlock: {state.player.rules.unlock_threshold} XP · Battle entry: {state.player.rules.battle_cost} XP</small>}
-  </> : <span>{state.signedIn ? 'Player status unavailable. Reconnect to refresh.' : 'Sign in to practice and save your progress.'}</span>}</div>
-}
-
-export function AuthForm({ session, state }) {
+export function AuthScreen({ flow, state, busy }) {
   const [mode, setMode] = useState('login')
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  if (state.signedIn) return <><PlayerStatus state={state} /><div className="button-row"><button className="secondary" disabled={state.busy} onClick={() => session.refresh()}>Reconnect / recover question</button><button className="secondary" disabled={state.busy || state.packBusy || !!state.unresolved} onClick={() => session.logout()}>Sign out</button></div></>
-  return <form onSubmit={(e) => { e.preventDefault(); session.authenticate(mode, { username, password }).then(() => setPassword('')) }}>
-    <p>Sign in to your learning adventure, or create an account.</p>
-    <label>Username<input data-autofocus autoComplete="username" required minLength={3} maxLength={32} pattern="[A-Za-z0-9_.-]+" value={username} onChange={(e) => setUsername(e.target.value)} disabled={state.busy} /></label>
-    <label>Password<input type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} required minLength={8} maxLength={256} value={password} onChange={(e) => setPassword(e.target.value)} disabled={state.busy} /></label>
-    <button className="primary full-width" disabled={state.busy}>{state.busy ? 'Connecting…' : mode === 'login' ? 'Sign in' : 'Register & sign in'}</button>
-    <button type="button" className="text-button" disabled={state.busy} onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); session.clearError() }}>{mode === 'login' ? 'Create a new account' : 'Use an existing account'}</button>
-  </form>
+  const [username, setUsername] = useState(''), [password, setPassword] = useState('')
+  const valid = username.length >= 3 && password.length >= 8
+  const submit = () => flow.authenticate(mode, { username, password })
+  return <PalaceDialog adventure backend tools={false} title={mode === 'login' ? 'Sign In' : 'Create Account'} kicker="Memory Palace">
+    <p>{mode === 'login' ? 'Your next adventure begins with a little knowledge.' : 'Create your account to begin your learning adventure.'}</p>
+    <form onSubmit={(e) => { e.preventDefault(); submit() }}>
+      <label>Username<input data-autofocus autoComplete="username" required minLength={3} maxLength={32} pattern="[A-Za-z0-9_.-]+" value={username} onChange={(e) => setUsername(e.target.value)} disabled={busy} /></label>
+      <label>Password<input type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} required minLength={8} maxLength={256} value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} /></label>
+      <ServerError error={state.error} />
+      <button className="primary full-width" disabled={busy}>{busy ? 'Connecting…' : mode === 'login' ? 'Sign In' : 'Create Account'}</button>
+      {state.error && <button type="button" className="secondary full-width" disabled={busy || !valid} onClick={submit}>Retry</button>}
+      <button type="button" className="text-button" disabled={busy} onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setPassword(''); flow.clearError() }}>{mode === 'login' ? 'Create account' : 'Back to Sign In'}</button>
+    </form>
+  </PalaceDialog>
 }
 
 export function Encounter({ session, state }) {
@@ -59,6 +53,7 @@ export function Encounter({ session, state }) {
   </form>
 }
 
+
 export function Recovery({ session, state }) {
-  return <><ServerError error={state.error} />{state.unresolved && <div className="demo-notice"><p>A {state.unresolved.kind} request has an uncertain result. Its original payload and key are saved. Retry it before starting a new action.</p><button className="primary" disabled={state.busy} onClick={() => session.retry()}>Retry saved action</button></div>}</>
+  return <><ServerError error={state.error} />{state.unresolved && <div role="status"><p>The last action has an uncertain result. Retry it safely before continuing.</p><button className="primary full-width" disabled={state.busy} onClick={() => session.retry()}>Retry</button></div>}{state.error && !state.unresolved && <button className="secondary full-width" disabled={state.busy} onClick={() => session.refresh()}>Retry</button>}</>
 }

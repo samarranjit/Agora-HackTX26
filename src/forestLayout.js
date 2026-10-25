@@ -95,7 +95,7 @@ export function nearbyForestTarget(position, run) {
   return id || (Math.abs(position.x) < 4 && position.z < -17 ? 'forest-gate' : null)
 }
 
-export const forestEnemyEligible = (run, id) => run.accountMode || run.collectedIds.length >= 2 && (id === 'goblin' || id === 'wolf' && run.defeatedEnemyIds.includes('goblin'))
+export const forestEnemyEligible = (run, id) => run.availableTargetIds?.includes(id) === true
 export function approachingForestEncounter(position, run) {
   if (run.stage !== 'forest') return null
   return run.layout.encounters.find((enemy) => forestEnemyEligible(run, enemy.id) && !run.startedEnemyIds.includes(enemy.id) && Math.hypot(position.x - enemy.x, position.z - enemy.z) < 3.8 && Math.abs(position.y - forestHeight(enemy.x, enemy.z, run.layout) - 1.6) < 2.4)?.id || null

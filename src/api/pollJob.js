@@ -16,5 +16,5 @@ export async function pollJob(read, signal, { timeoutMs = 120000, intervalMs = 1
       if (signal.aborted) done()
     })
   }
-  throw new Error(signal.aborted ? 'Polling stopped. You can check this job again by ID.' : `Preparation is taking longer than ${Math.round(timeoutMs / 60000)} minutes. Check this job again by ID.`)
+  throw new Error(signal.aborted ? 'PDF preparation was stopped.' : `Preparation is taking longer than ${Math.round(timeoutMs / 60000)} minutes. Please retry to keep waiting.`)
 }

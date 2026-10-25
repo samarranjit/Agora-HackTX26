@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import SoundControl from './SoundControl.jsx'
 
-export default function PalaceDialog({ title, children, onClose, wide = false, adventure = false, backend = false, kicker }) {
+export default function PalaceDialog({ title, children, onClose, wide = false, adventure = false, backend = false, kicker, tools = true }) {
   const ref = useRef(null)
   const closeRef = useRef(onClose)
   useEffect(() => { closeRef.current = onClose }, [onClose])
@@ -41,7 +41,7 @@ export default function PalaceDialog({ title, children, onClose, wide = false, a
   }, [])
   return <div className={'palace-overlay' + (adventure ? ' adventure-overlay' : '') + (backend ? ' backend-overlay' : '')}>
     <section ref={ref} tabIndex={-1} className={'palace-card ' + (wide ? 'notes-card ' : '') + (adventure ? 'adventure-card' : '') + (backend ? ' backend-card' : '')} role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-      <div className="dialog-heading"><p className="palace-kicker">{kicker || (adventure ? 'Memory Palace · Learning adventure' : 'Memory Palace · Biology room')}</p><div className="dialog-tools"><SoundControl />{onClose && <button className="close-button" onClick={onClose} aria-label="Close and return to exploration">✕</button>}</div></div>
+      <div className="dialog-heading"><p className="palace-kicker">{kicker || 'Memory Palace · A guest adventure'}</p><div className="dialog-tools">{tools && <SoundControl />}{onClose && <button className="close-button" onClick={onClose} aria-label="Close and return to exploration">✕</button>}</div></div>
       <h1 id="dialog-title">{title}</h1>
       {children}
     </section>
