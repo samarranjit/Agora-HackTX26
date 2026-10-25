@@ -83,7 +83,14 @@ def create_app(
             CORSMiddleware,
             allow_origins=list(settings.cors_origins),
             allow_methods=["GET", "POST"],
-            allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+            # ngrok-skip-browser-warning lets a browser reach the API through a free
+            # ngrok tunnel, which otherwise answers with an HTML warning page.
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                "Idempotency-Key",
+                "ngrok-skip-browser-warning",
+            ],
             allow_credentials=False,
         )
     app.add_middleware(GZipMiddleware, minimum_size=settings.gzip_minimum_bytes)
