@@ -68,7 +68,7 @@ From the repository root (the test key is never used for a network call):
 GEMINI_API_KEY=test python -m unittest discover -s ai_module/tests -v
 ```
 
-They need the packages in `requirements.txt` plus `httpx` (used by FastAPI's test client). 43
+They need the packages in `requirements.txt` plus `httpx` (used by FastAPI's test client). 50
 tests cover the difficulty plan, the prompt, answer alignment, page lookup, authentication,
 persistence across restarts, error shapes, and a check of every contract rule on the output.
 Gemini is replaced by a stand-in, so they need no key or network.
@@ -85,8 +85,8 @@ Gemini is replaced by a stand-in, so they need no key or network.
   first version, which required an exact match, found none: real PDF text has missing spaces and
   spliced margin notes. The current matcher found 22 of 24 on the committed sample output (strict
   matching found 18), and never disagreed with the strict matcher where both found a page.
-- Tests: 48 offline tests (difficulty plan, prompt, alignment, page lookup including the real
-  extraction glitches, authentication, persistence, error shapes, contract rules).
+- Tests: 50 offline tests (difficulty plan, prompt, alignment, page lookup including the real
+  extraction glitches, recitation retries, authentication, persistence, error shapes, contract rules).
 - **Not verified:** quality of the questions beyond reading a few; whether `difficulty` as
   judged by the model matches how hard players find a question; behavior on scanned PDFs,
   very large PDFs, or non-English documents; Gemini quota and rate limits under load.
@@ -98,4 +98,8 @@ Gemini is replaced by a stand-in, so they need no key or network.
   questions will have none. Scanned PDFs without a text layer get none.
 - Parallel batches can repeat a question; duplicates are dropped, so a request can return slightly fewer than `count`.
   The backend accepts that for practice, but an adventure set needs all of its levels.
+- Gemini sometimes blocks an answer as "copyright/recitation" (seen once on a textbook chapter).
+  The service then asks again, up to 3 attempts in all, for questions in the model's own words
+  and a shorter quote. If every attempt is blocked, that set fails with a safe error and the
+  study pack must be submitted again.
 - One service process, with a JSON registry file. It is not built for several instances.

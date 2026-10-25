@@ -47,7 +47,17 @@ DOCUMENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 MAX_PDF_BYTES = 50 * 1024 * 1024
 PIPELINE_VERSION = "ai_module-gemini-file-search"
 PROMPT_VERSION = "contract-v1"
-GENERATION_ATTEMPTS = 2
+GENERATION_ATTEMPTS = 3
+RECITATION_FEEDBACK = (
+    "it was blocked for copying too much of the document; write every question, option and "
+    "explanation in your own words, and keep each source_quote under 15 words"
+)
+
+
+def _is_recitation_block(exc: Exception) -> bool:
+    """Gemini's copyright/recitation filter, which the SDK reports only as an error message."""
+    text = str(exc).lower()
+    return "recitation" in text or "copyrighted" in text
 
 
 class ServiceError(Exception):
@@ -316,7 +326,14 @@ class GameMasterService:
             start = time.perf_counter()
             try:
                 batch = self.engine.write_questions(prompt, stores)
-            except Exception:
+            except Exception as exc:
+                if _is_recitation_block(exc) and attempt < GENERATION_ATTEMPTS:
+                    # Gemini refuses answers that copy too much of a published text.
+                    # Asking again for paraphrased questions and a shorter quote
+                    # usually succeeds.
+                    logger.warning("Gemini blocked the answer as recitation; asking again in its own words")
+                    feedback = RECITATION_FEEDBACK
+                    continue
                 logger.exception("Gemini call failed")
                 raise ServiceError(502, "The question generator is unavailable. Please try again.") from None
             logger.info("Gemini wrote %d/%d questions in %.1fs", len(batch.questions), len(plan), time.perf_counter() - start)
