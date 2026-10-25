@@ -18,7 +18,7 @@ VILLAINS = ("goblin", "troll", "dragon")
 
 
 def engine_in_battle() -> GameEngine:
-    """A state with a pending battle question and one processed attempt."""
+    """A state with a pending battle question and processed practice attempts."""
     engine = GameEngine.new_game("Zoë", slide_count=3, villain_ids=VILLAINS)
     for _ in range(5):
         engine.go_to(Scene.PRACTICE)
@@ -27,9 +27,8 @@ def engine_in_battle() -> GameEngine:
     engine.go_to(Scene.PRACTICE)
     engine.present_practice_question("practice-2", 2)
     engine.go_to(Scene.ADVENTURE)
-    refs = [QuestionRef(f"q{i}", i) for i in (1, 2, 3)]
-    battle = engine.start_battle("goblin", refs)
-    engine.submit_battle_result(battle.pending_attempt_id, False)
+    refs = [QuestionRef("q1", 1)]
+    engine.start_battle("goblin", refs)
     return engine
 
 
@@ -64,7 +63,7 @@ class RoundTripTests(unittest.TestCase):
         data["active_battle"]["questions"].clear()
         self.assertEqual(state.completed_villains, ())
         assert state.active_battle is not None
-        self.assertEqual(len(state.active_battle.questions), 3)
+        self.assertEqual(len(state.active_battle.questions), 1)
 
 
 class RejectionTests(unittest.TestCase):

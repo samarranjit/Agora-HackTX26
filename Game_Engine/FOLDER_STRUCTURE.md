@@ -95,7 +95,8 @@ engine with custom rules rather than editing the defaults, using the helpers at 
 `test_engine.py`:
 
 ```python
-engine = new_engine(Rules(battle_wins_required=3))
+engine = new_engine(Rules(battle_cost=50))
 earn(engine, 100)
-assert fight(engine, (True, True, False)).outcome == BattleOutcome.LOST
+start_next_battle(engine)
+assert engine.state.xp == 50
 ```

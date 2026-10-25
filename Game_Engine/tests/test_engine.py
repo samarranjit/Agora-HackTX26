@@ -27,7 +27,7 @@ PRACTICE_DIFFICULTY = 3
 
 
 def battle_refs(difficulty: int = 1) -> tuple[QuestionRef, ...]:
-    return tuple(QuestionRef(f"q{index}", difficulty) for index in range(1, 4))
+    return (QuestionRef("q1", difficulty),)
 
 
 def new_engine(rules: Rules = DEFAULT_RULES) -> GameEngine:
@@ -69,8 +69,8 @@ def fight(
     return results[-1]
 
 
-WIN = (True, True, False)
-LOSE = (True, False, False)
+WIN = (True,)
+LOSE = (False,)
 
 
 class NewGameTests(unittest.TestCase):
@@ -224,9 +224,9 @@ class UnlockTests(unittest.TestCase):
         self.assertTrue(result.adventure_unlocked_now)
         self.assertEqual(engine.adventure_status, AdventureStatus.UNLOCKED)
 
-        # Entry -30, one correct +10, two wrong -2 each.
+        # Entry -30, one wrong at difficulty 1 costs 2 more.
         fight(engine, LOSE)
-        self.assertEqual(engine.state.xp, 76)
+        self.assertEqual(engine.state.xp, 68)
         self.assertTrue(engine.state.adventure_unlocked)
         self.assertFalse(answer_practice(engine).adventure_unlocked_now)
 
@@ -252,29 +252,28 @@ class BattleEntryTests(unittest.TestCase):
         start_next_battle(engine)
         self.assertEqual(engine.state.xp, 70)
         self.assertEqual(engine.state.scene, Scene.BATTLE)
-        for expected in (80, 90, 100):
-            answer_battle(engine, True)
-            self.assertEqual(engine.state.xp, expected)
+        answer_battle(engine, True)
+        self.assertEqual(engine.state.xp, 80)
 
     def test_insufficient_xp_is_rejected_without_change(self) -> None:
         engine = new_engine()
         earn(engine, 100)
         for _ in range(3):
             fight(engine, LOSE)
-        self.assertEqual(engine.state.xp, 28)
-        self.assertEqual(engine.battle_shortfall, 2)
+        self.assertEqual(engine.state.xp, 4)
+        self.assertEqual(engine.battle_shortfall, 26)
         before = engine.state
-        with self.assertRaisesRegex(InvalidAction, "Earn 2 more XP"):
+        with self.assertRaisesRegex(InvalidAction, "Earn 26 more XP"):
             engine.start_battle("goblin", battle_refs())
         self.assertEqual(engine.state, before)
 
     def test_paid_battle_can_finish_at_zero_xp(self) -> None:
         engine = new_engine(Rules(battle_cost=100))
         earn(engine, 100)
-        result = fight(engine, (False, False, False))
+        result = fight(engine, LOSE)
         self.assertEqual(result.outcome, BattleOutcome.LOST)
         self.assertEqual(engine.state.xp, 0)
-        self.assertEqual(engine.state.health, 85)
+        self.assertEqual(engine.state.health, 95)
 
     def test_locked_villain_cannot_start(self) -> None:
         engine = new_engine()
@@ -298,8 +297,8 @@ class BattleEntryTests(unittest.TestCase):
         with self.assertRaises(InvalidAction):
             engine.start_battle("kraken", battle_refs())
         with self.assertRaises(InvalidAction):
-            engine.start_battle("goblin", battle_refs()[:2])
-        bad_difficulty = (*battle_refs()[:2], QuestionRef("q3", 9))
+            engine.start_battle("goblin", ())
+        bad_difficulty = (QuestionRef("q1", 9),)
         with self.assertRaisesRegex(InvalidAction, "difficulty"):
             engine.start_battle("goblin", bad_difficulty)
         self.assertEqual(engine.state.xp, 100)
@@ -310,40 +309,32 @@ class BattleTests(unittest.TestCase):
         self.engine = new_engine()
         earn(self.engine, 100)
 
-    def test_two_correct_answers_win(self) -> None:
-        result = fight(self.engine, (False, True, True))
+    def test_one_correct_answer_wins(self) -> None:
+        result = fight(self.engine, WIN)
         self.assertEqual(result.outcome, BattleOutcome.WON)
         self.assertEqual(self.engine.state.completed_villains, ("goblin",))
         self.assertEqual(self.engine.villain_status("troll"), VillainStatus.CURRENT)
         self.assertEqual(self.engine.state.scene, Scene.ADVENTURE)
         self.assertIsNone(self.engine.state.active_battle)
 
-    def test_fewer_than_two_correct_answers_lose_and_keep_villain(self) -> None:
+    def test_incorrect_answer_loses_and_keeps_villain(self) -> None:
         result = fight(self.engine, LOSE)
         self.assertEqual(result.outcome, BattleOutcome.LOST)
         self.assertEqual(self.engine.state.completed_villains, ())
         self.assertEqual(self.engine.next_villain_id, "goblin")
         self.assertEqual(self.engine.villain_status("goblin"), VillainStatus.CURRENT)
 
-    def test_all_three_questions_are_asked_after_outcome_is_decided(self) -> None:
-        start_next_battle(self.engine)
-        answer_battle(self.engine, True)
-        result = answer_battle(self.engine, True)
-        self.assertEqual(result.outcome, BattleOutcome.IN_PROGRESS)
-        battle = self.engine.state.active_battle
-        assert battle is not None
-        self.assertEqual(battle.position, 2)
-        self.assertEqual(self.engine.state.completed_villains, ())
-
-        final = answer_battle(self.engine, False)
-        self.assertEqual(final.outcome, BattleOutcome.WON)
-        self.assertEqual(final.question_number, 3)
+    def test_the_single_question_completes_the_encounter(self) -> None:
+        result = fight(self.engine, WIN)
+        self.assertEqual(result.outcome, BattleOutcome.WON)
+        self.assertEqual(result.question_number, 1)
+        self.assertIsNone(self.engine.state.active_battle)
 
     def test_retry_charges_again(self) -> None:
         fight(self.engine, LOSE)
-        self.assertEqual(self.engine.state.xp, 76)
+        self.assertEqual(self.engine.state.xp, 68)
         start_next_battle(self.engine)
-        self.assertEqual(self.engine.state.xp, 46)
+        self.assertEqual(self.engine.state.xp, 38)
         battle = self.engine.state.active_battle
         assert battle is not None
         self.assertEqual(battle.position, 0)
@@ -392,11 +383,9 @@ class BattleTests(unittest.TestCase):
             )
         self.assertEqual(self.engine.state, before)
         self.engine.submit_battle_result(battle.pending_attempt_id, False)
-        updated = self.engine.state.active_battle
-        assert updated is not None
         self.assertEqual(self.engine.state.xp, 68)
-        self.assertEqual(updated.position, 1)
-        self.assertEqual(updated.correct_count, 0)
+        self.assertIsNone(self.engine.state.active_battle)
+        self.assertEqual(self.engine.state.completed_villains, ())
 
 
 class BattleEconomyTests(unittest.TestCase):
@@ -423,46 +412,28 @@ class BattleEconomyTests(unittest.TestCase):
         result = answer_battle(engine, False)
         self.assertEqual(result.xp_delta, -5)
         self.assertEqual(engine.state.xp, 0)
-        self.assertEqual(answer_battle(engine, False).xp_delta, 0)
 
     def test_zero_health_ends_battle_immediately_without_refund(self) -> None:
-        engine = new_engine(Rules(starting_health=10))
-        earn(engine, 100)
-        fight(engine, (True, True, True))
-        self.assertEqual(engine.state.health, 35)
-        xp_before = engine.state.xp
-
-        start_next_battle(engine, difficulty=5)
-        answer_battle(engine, False)
-        result = answer_battle(engine, False)
-
-        self.assertEqual(result.outcome, BattleOutcome.KNOCKED_OUT)
-        self.assertEqual(result.question_number, 2)
-        self.assertEqual(result.health_delta, -10)
-        state = engine.state
-        self.assertEqual(state.health, 0)
-        self.assertEqual(state.xp, xp_before - 30 - 10 - 10)
-        self.assertEqual(state.scene, Scene.PLAYGROUND)
-        self.assertIsNone(state.active_battle)
-        self.assertEqual(state.completed_villains, ("goblin",))
-        self.assertEqual(engine.next_villain_id, "troll")
-
-    def test_zero_health_beats_an_already_secured_win(self) -> None:
         engine = new_engine(Rules(starting_health=0))
         earn(engine, 100)
         self.assertEqual(engine.state.health, 25)
-        start_next_battle(engine, difficulty=5)
-        answer_battle(engine, True)
-        answer_battle(engine, True)
-        result = answer_battle(engine, False)
+        result = fight(engine, LOSE, difficulty=5)
+
         self.assertEqual(result.outcome, BattleOutcome.KNOCKED_OUT)
+        self.assertEqual(result.question_number, 1)
+        self.assertEqual(result.health_delta, -25)
+        state = engine.state
+        self.assertEqual(state.health, 0)
+        self.assertEqual(state.xp, 60)
+        self.assertEqual(state.scene, Scene.PLAYGROUND)
+        self.assertIsNone(state.active_battle)
         self.assertEqual(engine.state.completed_villains, ())
+        self.assertEqual(engine.next_villain_id, "goblin")
 
     def test_practice_recovery_is_required_before_the_next_battle(self) -> None:
-        engine = new_engine(Rules(starting_health=10))
+        engine = new_engine(Rules(starting_health=0))
         earn(engine, 100)
         start_next_battle(engine, difficulty=5)
-        answer_battle(engine, False)
         answer_battle(engine, False)
         self.assertEqual(engine.state.health, 0)
 
@@ -483,21 +454,21 @@ class BattleEconomyTests(unittest.TestCase):
         engine = new_engine()
         earn(engine, 100)
         fight(engine, LOSE)
-        self.assertEqual(engine.state.health, 90)
+        self.assertEqual(engine.state.health, 95)
         engine.go_to(Scene.PLAYGROUND)
         engine.go_to(Scene.ADVENTURE)
         start_next_battle(engine)
-        self.assertEqual(engine.state.health, 90)
+        self.assertEqual(engine.state.health, 95)
 
 
 class CompletionTests(unittest.TestCase):
     def test_dragon_victory_completes_adventure(self) -> None:
         engine = new_engine()
         earn(engine, 100)
-        # Each WIN at difficulty 1: entry -30, two correct +20, one wrong -2.
+        # Each WIN at difficulty 1: entry -30 and one correct answer +10.
         fight(engine, WIN)
         fight(engine, WIN)
-        self.assertEqual(engine.state.xp, 76)
+        self.assertEqual(engine.state.xp, 60)
         result = fight(engine, WIN)
         self.assertTrue(result.adventure_completed)
         self.assertEqual(engine.adventure_status, AdventureStatus.COMPLETED)
@@ -511,10 +482,10 @@ class CompletionTests(unittest.TestCase):
         earn(engine, 100)
         for _ in VILLAINS:
             fight(engine, WIN)
-        self.assertEqual((engine.state.xp, engine.state.health), (64, 85))
+        self.assertEqual((engine.state.xp, engine.state.health), (40, 100))
         result = answer_practice(engine)
         self.assertEqual(result.xp_delta, 20)
-        self.assertEqual((engine.state.xp, engine.state.health), (84, 90))
+        self.assertEqual((engine.state.xp, engine.state.health), (60, 100))
 
 
 class InvariantTests(unittest.TestCase):
@@ -522,7 +493,6 @@ class InvariantTests(unittest.TestCase):
         engine = new_engine()
         earn(engine, 100)
         start_next_battle(engine)
-        answer_battle(engine, True)
         self.battle_state = engine.state
 
     def assert_invalid(self, **changes: object) -> None:
@@ -543,8 +513,8 @@ class InvariantTests(unittest.TestCase):
         self.assert_invalid(lesson_position=3)
         self.assert_invalid(adventure_unlocked=False)
         self.assert_invalid(scene=Scene.PLAYGROUND)
-        self.assert_invalid(active_battle=replace(battle, correct_count=2))
-        self.assert_invalid(active_battle=replace(battle, position=3))
+        self.assert_invalid(active_battle=replace(battle, correct_count=1))
+        self.assert_invalid(active_battle=replace(battle, position=1))
         self.assert_invalid(active_battle=replace(battle, villain_id="troll"))
         self.assert_invalid(
             active_battle=replace(battle, questions=battle_refs(difficulty=6))
