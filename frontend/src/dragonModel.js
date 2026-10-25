@@ -1,15 +1,11 @@
 import * as THREE from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { smooth, V, hex, ramp, createPart, createTube, glowByColor, profile, bump } from './modelKit.js'
 
 // The Storykeeper Dragon: a long, lean, red-orange-and-white beast. Fixed parts are
 // merged into a few vertex-coloured meshes. The neck, tail, wings and their
 // membranes are lofted shapes whose vertices are re-laid along animated bone paths.
 // Units are local; the hall scales the whole dragon. +z is forward, +y is up.
 
-const { clamp } = THREE.MathUtils
-const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t) }
-const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z)
-const hex = (value) => new THREE.Color(value)
 
 // Red on the back, orange on the flanks, white on the belly, horns, teeth and flame.
 const PAL = {
@@ -17,13 +13,6 @@ const PAL = {
   gold: hex(0xffc766), cream: hex(0xffe6c8), white: hex(0xfff8ee), soot: hex(0x2c0a07),
 }
 
-function ramp(stops, x, out) {
-  if (x <= stops[0][0]) return out.copy(stops[0][1])
-  for (let i = 1; i < stops.length; i++) {
-    if (x <= stops[i][0]) return out.copy(stops[i - 1][1]).lerp(stops[i][1], (x - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0]))
-  }
-  return out.copy(stops[stops.length - 1][1])
-}
 // v runs from -1 (belly) to +1 (back).
 const SKIN = [[-1, PAL.white], [-0.68, PAL.cream], [-0.36, PAL.gold], [-0.08, PAL.orange], [0.3, PAL.orange], [0.62, PAL.scarlet], [0.9, PAL.red], [1, PAL.red]]
 const skinColor = (u, v, out) => {
@@ -34,126 +23,6 @@ const skinColor = (u, v, out) => {
   return out.multiplyScalar(0.93 + 0.07 * band).lerp(PAL.amber, lick * 0.55)
 }
 
-// ---------- Merged static parts ----------
-
-function bake(source, matrix, colorOf) {
-  const g = source.index ? source.toNonIndexed() : source.clone()
-  g.deleteAttribute('uv')
-  const pos = g.attributes.position, colors = new Float32Array(pos.count * 3), c = new THREE.Color()
-  for (let i = 0; i < pos.count; i++) { colorOf(pos.getX(i), pos.getY(i), pos.getZ(i), c); colors.set([c.r, c.g, c.b], i * 3) }
-  g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  g.applyMatrix4(matrix)
-  return g
-}
-
-function createPart() {
-  const geometries = [], matrix = new THREE.Matrix4(), quat = new THREE.Quaternion(), euler = new THREE.Euler()
-  const up = V(0, 1, 0)
-  return {
-    orb(position, scale, top, bottom = top, rotation = [0, 0, 0], detail = 1) {
-      const source = new THREE.SphereGeometry(1, Math.round(26 * detail), Math.round(18 * detail))
-      matrix.compose(V(...position), quat.setFromEuler(euler.set(...rotation)), V(...scale))
-      geometries.push(bake(source, matrix, (x, y, z, out) => out.copy(bottom).lerp(top, (y + 1) / 2)))
-      source.dispose()
-    },
-    // A cone from `from` along `dir`, base colour c0 and tip colour c1.
-    cone(from, dir, length, radius, c0, c1 = c0, sides = 10) {
-      const source = new THREE.ConeGeometry(1, 1, sides, 2)
-      const d = dir.clone().normalize()
-      quat.setFromUnitVectors(up, d)
-      matrix.compose(from.clone().addScaledVector(d, length / 2), quat, V(radius, length, radius))
-      geometries.push(bake(source, matrix, (x, y, z, out) => out.copy(c0).lerp(c1, y + 0.5)))
-      source.dispose()
-    },
-    add(geometry) { geometries.push(geometry.index ? geometry.toNonIndexed() : geometry) },
-    build(material, name) {
-      const merged = mergeGeometries(geometries, false)
-      merged.computeVertexNormals()
-      geometries.forEach((g) => g.dispose())
-      const mesh = new THREE.Mesh(merged, material)
-      mesh.name = name; mesh.castShadow = true; mesh.receiveShadow = true
-      return mesh
-    },
-  }
-}
-
-// ---------- Lofted tubes ----------
-
-// A tube of elliptical rings along a path, with optional spines. `shape(points)` lays
-// the vertices along a new path, so the same tube serves fixed and bending parts.
-function createTube({ rings, sides, rx, ry, color, spikes = [] }) {
-  const ringTotal = rings + 1, body = ringTotal * sides, total = body + spikes.length * 4
-  const positions = new Float32Array(total * 3), colors = new Float32Array(total * 3), normals = new Float32Array(total * 3)
-  const index = []
-  for (let r = 0; r < rings; r++) {
-    for (let s = 0; s < sides; s++) {
-      const a = r * sides + s, b = r * sides + (s + 1) % sides, c = (r + 1) * sides + s, d = (r + 1) * sides + (s + 1) % sides
-      index.push(a, c, b, b, c, d)
-    }
-  }
-  const tint = new THREE.Color()
-  for (let r = 0; r < ringTotal; r++) {
-    for (let s = 0; s < sides; s++) { color(r / rings, Math.cos(s / sides * Math.PI * 2), tint); colors.set([tint.r, tint.g, tint.b], (r * sides + s) * 3) }
-  }
-  spikes.forEach((sp, k) => {
-    const first = body + k * 4
-    index.push(first, first + 1, first + 2, first, first + 2, first + 3, first, first + 3, first + 1)
-    colors.set([sp.tip.r, sp.tip.g, sp.tip.b], first * 3)
-    for (let n = 1; n < 4; n++) colors.set([sp.base.r, sp.base.g, sp.base.b], (first + n) * 3)
-  })
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage))
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3).setUsage(THREE.DynamicDrawUsage))
-  geometry.setIndex(index)
-  const frames = Array.from({ length: ringTotal }, () => ({ P: V(), T: V(), N: V(), B: V() }))
-  const q = new THREE.Quaternion(), dorsal = V(0, 1, 0), axis = V(), apex = V(), point = V()
-  const put = (i, v) => positions.set([v.x, v.y, v.z], i * 3)
-  return {
-    geometry, frames,
-    shape(points, withNormals = true) {
-      const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal')
-      for (let r = 0; r < ringTotal; r++) {
-        const f = frames[r], u = r / rings
-        curve.getPoint(u, f.P); curve.getTangent(u, f.T)
-        if (r === 0) f.N.copy(dorsal).addScaledVector(f.T, -dorsal.dot(f.T))
-        else { q.setFromUnitVectors(frames[r - 1].T, f.T); f.N.copy(frames[r - 1].N).applyQuaternion(q) }
-        f.N.addScaledVector(f.T, -f.N.dot(f.T)).normalize()
-        f.B.crossVectors(f.T, f.N)
-        for (let s = 0; s < sides; s++) {
-          const angle = s / sides * Math.PI * 2, a = Math.cos(angle) * ry[r], b = Math.sin(angle) * rx[r]
-          put(r * sides + s, point.copy(f.P).addScaledVector(f.N, a).addScaledVector(f.B, b))
-        }
-      }
-      spikes.forEach((sp, k) => {
-        const f = frames[sp.ring], first = body + k * 4
-        const w = sp.width, h = sp.height
-        if (sp.axis === 'T') {
-          // A claw continuing the tube: the apex ahead, the base ring round the end.
-          put(first, point.copy(f.P).addScaledVector(f.T, h))
-          put(first + 1, point.copy(f.P).addScaledVector(f.N, w))
-          put(first + 2, point.copy(f.P).addScaledVector(f.N, -w * 0.5).addScaledVector(f.B, w * 0.87))
-          put(first + 3, point.copy(f.P).addScaledVector(f.N, -w * 0.5).addScaledVector(f.B, -w * 0.87))
-          return
-        }
-        const sign = sp.axis.startsWith('-') ? -1 : 1, onB = sp.axis.endsWith('B')
-        axis.copy(onB ? f.B : f.N).multiplyScalar(sign)
-        const radial = (onB ? rx : ry)[sp.ring] * 0.9
-        const centre = point.copy(f.P).addScaledVector(axis, radial).clone()
-        put(first, apex.copy(centre).addScaledVector(axis, h).addScaledVector(f.T, -h * sp.sweep))
-        const side = onB ? f.N : f.B
-        put(first + 1, point.copy(centre).addScaledVector(side, w).addScaledVector(f.T, w * 0.7))
-        put(first + 2, point.copy(centre).addScaledVector(side, -w).addScaledVector(f.T, w * 0.7))
-        put(first + 3, point.copy(centre).addScaledVector(f.T, -w * 1.2))
-      })
-      geometry.attributes.position.needsUpdate = true
-      if (withNormals) geometry.computeVertexNormals()
-    },
-  }
-}
-
-const profile = (rings, fn) => Float32Array.from({ length: rings + 1 }, (_, i) => fn(i / rings))
-const bump = (x, centre, width) => Math.exp(-(((x - centre) / width) ** 2))
 const spike = (ring, axis, height, width, sweep, base, tip = PAL.white) => ({ ring, axis, height, width, sweep, base, tip })
 
 // A bone-and-muscle limb: a fixed tube along a path.
@@ -195,14 +64,6 @@ function fireState(time) {
   const q = (time % FIRE_PERIOD) - FIRE_START
   if (time <= 0 || q <= 0 || q >= 3) return { windup: 0, heat: 0 }
   return { windup: smooth(0, 0.7, q) * (1 - smooth(2.3, 3, q)), heat: smooth(0.7, 1.0, q) * (1 - smooth(2.1, 2.45, q)) }
-}
-
-// Emission that follows the vertex colours: parts glow in their own red, orange or white.
-function glowByColor(material, key) {
-  material.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= vColor.rgb;')
-  }
-  material.customProgramCacheKey = () => key
 }
 
 const rotateZ = (v, angle, out = V()) => out.set(v.x * Math.cos(angle) - v.y * Math.sin(angle), v.x * Math.sin(angle) + v.y * Math.cos(angle), v.z)

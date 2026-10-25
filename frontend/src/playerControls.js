@@ -6,7 +6,7 @@ const LOOK_SPEED = 0.0022
 const PITCH_LIMIT = Math.PI / 2 - 0.08
 
 // Owns player input and pointer lock, without depending on React or a particular scene.
-export function createPlayerControls({ canvas, camera, constrainMovement, motion, onRespawn, onInteract, onPause, onLockChange }) {
+export function createPlayerControls({ canvas, camera, constrainMovement, motion, eyeHeight = EYE_HEIGHT, onRespawn, onInteract, onPause, onLockChange }) {
   const doc = canvas.ownerDocument
   const win = doc.defaultView
   const keys = { w: false, a: false, s: false, d: false, shift: false }
@@ -145,7 +145,7 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
     if (motion) {
       const respawned = motion.update(dt, { x: inputX, z: inputZ, jump: jumpQueued, sprint: keys.shift }, camera.rotation.y)
       jumpQueued = false
-      camera.position.set(motion.position.x, motion.position.y + EYE_HEIGHT, motion.position.z)
+      camera.position.set(motion.position.x, motion.position.y + eyeHeight, motion.position.z)
       if (respawned) {
         clearKeys()
         camera.rotation.set(0.06, 0, 0)
@@ -161,7 +161,7 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
     const dx = (nx * Math.cos(yaw) - nz * Math.sin(yaw)) * MOVE_SPEED * dt
     const dz = (-nx * Math.sin(yaw) - nz * Math.cos(yaw)) * MOVE_SPEED * dt
     const next = constrainMovement(camera.position.x + dx, camera.position.z + dz, viewState.unlocked, camera.position.z)
-    camera.position.set(next.x, EYE_HEIGHT, next.z)
+    camera.position.set(next.x, eyeHeight, next.z)
   }
   const dispose = () => {
     if (disposed) return
