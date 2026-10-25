@@ -1,6 +1,6 @@
 # Agora — Frontend
 
-Vite + React + Three.js client for Agora. It presents the Storywood and the castle. It never invents questions, XP, health, or victories.
+Vite + React + Three.js client for Agora. It presents the Storywood and the castle.
 
 **Sign in → choose or upload a PDF → walk the forest.**
 
@@ -16,7 +16,7 @@ npm run dev
 
 Node ≥ 22.12. The backend must be up and must allow this origin in CORS.
 
-Vite reads only a file named exactly `.env.local` (a misspelling such as `.env.lcoal` is ignored, and the app then makes no backend requests). Restart `npm run dev` after editing it. `VITE_API_BASE_URL` must be a URL the browser can reach. For `*.ngrok-free.dev` the client adds `ngrok-skip-browser-warning`, which the backend allows in CORS. Open the app on `localhost` or `127.0.0.1` (ports 5173–5180, 3000 or 4173): the backend allows exact origins only.
+Vite reads only a file named exactly `.env.local`. Restart `npm run dev` after editing it. `VITE_API_BASE_URL` must be a URL the browser can reach. For `*.ngrok-free.dev` the client adds `ngrok-skip-browser-warning`, which the backend allows in CORS. Open the app on `localhost` or `127.0.0.1` (ports 5173–5180, 3000 or 4173): the backend allows exact origins only.
 
 ```sh
 npm test
@@ -72,7 +72,3 @@ The dragon and the princess are built in code, not loaded from files. Both use `
 | Contract | `{ root, update(time, defeated), mouth() }` | `{ root, update(time, walking) }` |
 
 Both return a `root` the scene scales (1.8) and places. `update(0)` is the still pose used for reduced motion. All materials are listed in `root.userData.ownedMaterials` so `disposeScene` frees them. The dragon's no-walk circle is `HALL.dragon.radius` and the princess's is the 1.9 in `forestLayout.js`; widen them if a model grows.
-
-Faces must point outward: every tube is wound so one-sided materials show the outside. A tube that is inside-out looks hollow and mis-lit, and `tests/modelKit.test.js` checks the winding in every direction.
-
-Tests: `dragon.test.js` (detail, colours, flap and fire schedule, stays in the hall), `princess.test.js` (detail, outward faces, eyes in the face, blink, hands, hair), `modelKit.test.js`.
