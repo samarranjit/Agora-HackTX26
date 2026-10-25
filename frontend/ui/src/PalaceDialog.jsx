@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export default function PalaceDialog({ title, children, onClose, wide = false, adventure = false, kicker = 'Memory Palace · Biology room' }) {
+export default function PalaceDialog({ title, children, onClose, wide = false, adventure = false, kicker = 'Agora · Biology room' }) {
   const ref = useRef(null)
   useEffect(() => {
     const dialog = ref.current

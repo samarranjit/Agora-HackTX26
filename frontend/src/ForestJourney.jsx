@@ -117,7 +117,7 @@ export default function ForestJourney({ flow: suppliedFlow }) {
       onForestEnterCastle={() => { if (flow.session.getSnapshot().status?.adventure_unlocked && view.bridgeState === 'lowered') { updateWorld({ stage: 'castle', checkpoint: { id: 'castle', name: 'Castle entrance', position: CASTLE_APPROACH } }); setOverlay('arrival'); soundRef.current?.play('castle') } }}
       onPrincessWalk={() => soundRef.current?.play('guitar')}
       onPrincessArrived={() => { soundRef.current?.play('victory'); if (overlay !== 'question') setOverlay('rescue') }} />
-    {ready && <header className="palace-topbar" inert={!!overlay}><div className="palace-brand"><span className="brand-crest" aria-hidden="true">♜</span><div><strong>Memory Palace</strong><span>THE STORYWOOD</span></div></div><div className="forest-topbar-actions"><SoundControl /><button className="secondary menu-button" onClick={pause}>Pause <kbd>Esc</kbd></button></div></header>}
+    {ready && <header className="palace-topbar" inert={!!overlay}><div className="palace-brand"><span className="brand-crest" aria-hidden="true">♜</span><div><strong>Agora</strong><span>THE STORYWOOD</span></div></div><div className="forest-topbar-actions"><SoundControl /><button className="secondary menu-button" onClick={pause}>Pause <kbd>Esc</kbd></button></div></header>}
     {state.phase === 'auth' && <AuthScreen flow={flow} state={state} busy={server.busy} />}
     {!ready && state.phase !== 'auth' && <PdfLanding state={state} onSelect={flow.select} onRetry={flow.retry} onSelectPack={flow.selectPack} onRefresh={flow.loadLibrary} />}
     {ready && tryAgain && <TryAgainBanner />}

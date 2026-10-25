@@ -59,7 +59,7 @@ function App() {
   return <main className={'palace' + (outdoor ? ' courtyard' : '')}>
     <RoomExperience key={`${environment}:${session}`} controlRef={experienceRef} environment={environment} hearts={run.playerHearts} memories={!outdoor && loaded ? SAMPLE_MEMORIES : EMPTY_MEMORIES} active={(outdoor || loaded) && overlay === null} unlocked={!outdoor && unlocked} session={session} onDoor={openQuiz} onPause={pause} onExit={finish} onDiscover={discover} />
     <header className="palace-topbar" inert={overlay !== null}>
-      <div className="palace-brand">{outdoor && <span className="brand-crest" aria-hidden="true">♜</span>}<div><strong>Memory Palace</strong><span>{outdoor ? 'CROWNWATER · THE ROYAL GROUNDS' : '01 / The biology room'}</span></div></div>
+      <div className="palace-brand">{outdoor && <span className="brand-crest" aria-hidden="true">♜</span>}<div><strong>Agora</strong><span>{outdoor ? 'CROWNWATER · THE ROYAL GROUNDS' : '01 / The biology room'}</span></div></div>
       {outdoor ? <button className="secondary menu-button" onClick={pause}>Menu <kbd>Esc</kbd></button> : <div className="topbar-actions">{loaded && <><span className="room-status">{discovered.length}/3 visited · {unlocked ? 'Gate unlocked' : 'Gate locked'}</span><button className="secondary" onClick={() => setOverlay('notes')}>Notes & samples</button></>}<button className="secondary" onClick={returnToCourtyard}>Courtyard</button></div>}
     </header>
     {outdoor && overlay !== null && <AdventureMenu paused={overlay === 'pause'} onEnter={enterCourtyard} onDemo={openDemo} />}
