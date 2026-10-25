@@ -8,7 +8,16 @@ export function forestHeight(x, z, layout) {
   return 8 * t * t * (3 - 2 * t) + (layout ? Math.sin(x * 0.2 + layout.terrainPhase) * Math.sin(z * 0.13 + layout.terrainPhase) * 0.3 * edge : 0)
 }
 export const FOREST_SPAWN = Object.freeze({ x: 0, y: forestHeight(0, 40), z: 40, yaw: 0 })
+export const FOREST_ENCOUNTER_RADIUS = 7
+export const FOREST_QUESTION_RADIUS = FOREST_ENCOUNTER_RADIUS / 2
+export const FOREST_ENCOUNTER_ELEVATION = 3.2
+export function forestEncounterRange(position, spot, layout, radius = FOREST_ENCOUNTER_RADIUS) {
+  if (!position || !spot) return false
+  return Math.hypot(position.x - spot.x, position.z - spot.z) < radius
+    && Math.abs(position.y - forestHeight(spot.x, spot.z, layout) - 1.6) < FOREST_ENCOUNTER_ELEVATION
+}
 export const CASTLE_APPROACH = Object.freeze({ x: 0, y: 8, z: -31.4, yaw: Math.PI })
+export const HALL_FLOOR = CASTLE_APPROACH.y
 export function pathX(z) {
   for (let i = 1; i < FOREST_PATH.length; i++) {
     const a = FOREST_PATH[i - 1], b = FOREST_PATH[i]
@@ -81,33 +90,57 @@ export function createForestWorld(spawnId = 'start', layout = DEFAULT_FOREST_LAY
 }
 
 export function nearbyForestTarget(position, run) {
+  if (!position || !run?.layout) return null
   let nearest = 2.6, id = null
   for (const item of run.layout.collectibles) {
-    if (run.collectedIds.includes(item.id)) continue
+    if (run.collectedIds?.includes(item.id)) continue
     const distance = Math.hypot(position.x - item.x, position.z - item.z)
     if (distance < nearest && Math.abs(position.y - forestHeight(item.x, item.z, run.layout) - 1.6) < 2.4) { nearest = distance; id = item.id }
   }
   for (const enemy of run.layout.encounters) {
-    if (run.defeatedEnemyIds.includes(enemy.id) || !forestEnemyEligible(run, enemy.id)) continue
+    if (!forestGuardianApproachable(run, enemy.id)) continue
     const distance = Math.hypot(position.x - enemy.x, position.z - enemy.z)
-    if (distance < nearest + 1 && Math.abs(position.y - forestHeight(enemy.x, enemy.z, run.layout) - 1.6) < 2.4) { nearest = distance; id = enemy.id }
+    if (distance < Math.max(nearest + 1, FOREST_QUESTION_RADIUS) && Math.abs(position.y - forestHeight(enemy.x, enemy.z, run.layout) - 1.6) < FOREST_ENCOUNTER_ELEVATION) { nearest = distance; id = enemy.id }
   }
   return id || (Math.abs(position.x) < 4 && position.z < -17 ? 'forest-gate' : null)
 }
 
 export const forestEnemyEligible = (run, id) => run.availableTargetIds?.includes(id) === true
+export function usesCharacterSpeech(id) {
+  return id === 'goblin' || id === 'wolf'
+}
+export function forestGuardianApproachable(run, id) {
+  if (!id || run?.defeatedEnemyIds?.includes(id)) return false
+  if (id === 'dragon') return forestEnemyEligible(run, id)
+  return run?.summonableEnemyIds?.includes(id) === true
+}
+export function forestGuardianAnchor(id, layout) {
+  const enemy = layout?.encounters?.find((spot) => spot.id === id)
+  if (!enemy) return null
+  return { x: enemy.x, y: forestHeight(enemy.x, enemy.z, layout) + (id === 'wolf' ? 3.55 : 2.55), z: enemy.z }
+}
+export function speechAnchorFromProjected(ndc) {
+  if (!ndc || ndc.z < -1 || ndc.z > 1) return { x: 50, y: 18, visible: false }
+  return {
+    x: Math.round(Math.min(78, Math.max(22, (ndc.x * 0.5 + 0.5) * 100)) * 5) / 5,
+    y: Math.round(Math.min(38, Math.max(10, (-ndc.y * 0.5 + 0.5) * 100 + 8)) * 5) / 5,
+    visible: true,
+  }
+}
 export function approachingForestEncounter(position, run) {
   if (run.stage !== 'forest') return null
   const enemy = forestEncounterAt(position, run)
-  return enemy && forestEnemyEligible(run, enemy) && !run.startedEnemyIds.includes(enemy) ? enemy : null
+  return enemy && forestGuardianApproachable(run, enemy) && !run.startedEnemyIds.includes(enemy) ? enemy : null
 }
 export function forestEncounterAt(position, run) {
-  return run.layout.encounters.find((enemy) => !run.defeatedEnemyIds.includes(enemy.id) && Math.hypot(position.x - enemy.x, position.z - enemy.z) < 3.8 && Math.abs(position.y - forestHeight(enemy.x, enemy.z, run.layout) - 1.6) < 2.4)?.id || null
+  if (!position || !run?.layout?.encounters) return null
+  return run.layout.encounters.find((enemy) => forestGuardianApproachable(run, enemy.id) && forestEncounterRange(position, enemy, run.layout, FOREST_QUESTION_RADIUS))?.id || null
 }
 
-export const HALL = Object.freeze({ halfWidth: 40, back: -76, front: 76, ceiling: 48, dragon: Object.freeze({ x: -4, z: -51, scale: 1.8, radius: 4.6 }), princess: Object.freeze({ x: 0, z: -100 }), pillars: Object.freeze([-55, -30, -5, 20, 45]),
+export const HALL = Object.freeze({ halfWidth: 40, back: -76, front: 76, ceiling: 48, dragon: Object.freeze({ x: -4, z: -51, scale: 1.8, radius: 6.6 }), princess: Object.freeze({ x: 0, z: -100 }), pillars: Object.freeze([-55, -30, -5, 20, 45]),
   galleries: Object.freeze([-1, 1].map((side) => Object.freeze({ side, x: side * 54, width: 28, front: 34, back: -26 }))), prison: Object.freeze({ halfWidth: 12, front: -76, back: -108, gateZ: -90 }) })
 export function hallHeight(x, z) { return z < HALL.back && Math.abs(x) < HALL.prison.halfWidth ? 3 : Math.abs(x) < 17 ? Math.max(0, Math.min(3, (-z - 34) * 3 / 14)) : 0 }
+export function hallGround(x, z) { return HALL_FLOOR + hallHeight(x, z) }
 export function nearbyHallTarget(position) {
   if (Math.hypot(position.x - HALL.dragon.x, position.z - HALL.dragon.z) < 9) return 'dragon'
   if (Math.hypot(position.x - HALL.princess.x, position.z - HALL.princess.z) < 4) return 'princess'
@@ -118,7 +151,9 @@ export function createHallWorld() {
   let dragonDefeated = false
   return {
     setDragonDefeated(value) { dragonDefeated = value === true },
-    spawn: { x: 0, y: 0, z: 66 }, groundHeight: hallHeight, needsRespawn: (p) => p.y < -5,
+    spawn: { x: 0, y: hallGround(0, 66), z: 66 },
+    groundHeight: hallGround,
+    needsRespawn: (p) => p.y < HALL_FLOOR - 5,
     move(from, target) {
       const blocked = (x, z) => {
         const central = Math.abs(x) <= HALL.halfWidth - 1 && z >= HALL.back + 1 && z <= HALL.front - 1

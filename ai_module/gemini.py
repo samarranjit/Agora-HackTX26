@@ -8,13 +8,18 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 logger = logging.getLogger(__name__)
 
 from google import genai
+from google.genai import types
 from pydantic import BaseModel, ValidationError
 
 from . import prompts
-from .config import MODEL, MAX_TOPICS, CHALLENGES_PER_TOPIC
+from .config import MODEL, MAX_TOPICS, CHALLENGES_PER_TOPIC, SDK_ATTEMPTS, SDK_RETRY_MAX_DELAY_SECONDS
 from .schemas import TopicList, GeneratedSubject
 
-client = genai.Client()
+client = genai.Client(
+    http_options=types.HttpOptions(
+        retry_options=types.HttpRetryOptions(attempts=SDK_ATTEMPTS, max_delay=SDK_RETRY_MAX_DELAY_SECONDS)
+    )
+)
 
 
 def create_store_and_index(file_path: str, display_name: str) -> str:

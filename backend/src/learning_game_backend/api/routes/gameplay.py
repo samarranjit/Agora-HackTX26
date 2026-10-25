@@ -45,6 +45,17 @@ def my_status(account: Authed, service: ServiceDep) -> dict[str, Any]:
     return service.get_status(account)
 
 
+@router.post(
+    "/api/me/restart",
+    response_model=PlayerStateResponse,
+    responses=COMMON_ERRORS,
+    tags=["player"],
+)
+def restart_adventure(account: Authed, service: ServiceDep) -> dict[str, Any]:
+    """Reset XP, guardians, and answered questions. The uploaded PDF stays."""
+    return service.reset_progress(account)
+
+
 @router.get(
     "/api/me/export",
     responses={200: {"content": {"application/gzip": {}}}, **COMMON_ERRORS},

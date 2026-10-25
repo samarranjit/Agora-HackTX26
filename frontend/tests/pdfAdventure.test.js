@@ -23,7 +23,7 @@ async function loadJsx(url) {
   modules.set(url.href, compiled); return compiled
 }
 
-const { default: ForestJourney } = await import(await loadJsx(new URL('../src/ForestJourney.jsx', import.meta.url)))
+const { default: ForestJourney, TryAgainBanner } = await import(await loadJsx(new URL('../src/ForestJourney.jsx', import.meta.url)))
 const { default: PdfLanding } = await import(await loadJsx(new URL('../src/PdfLanding.jsx', import.meta.url)))
 const { Encounter } = await import(await loadJsx(new URL('../src/BackendGame.jsx', import.meta.url)))
 const { default: AdventureHud } = await import(await loadJsx(new URL('../src/AdventureHud.jsx', import.meta.url)))
@@ -272,6 +272,20 @@ test('switching study sets is blocked while an ambiguous answer awaits same-key 
   assert.ok(h.session.getSnapshot().unresolved)
 })
 
+test('restarting the adventure clears guardians without uploading the PDF again', async () => {
+  const reset={...balances,state_version:4,xp:100,adventure_unlocked:true,username:body.username,rules:{},practice_answered:0,villains:[{villain_id:'forest-goblin',status:'current'},{villain_id:'bridge-troll',status:'locked'},{villain_id:'castle-dragon',status:'locked'}]}
+  const h=harness({override:async path=>path==='/api/me/restart'?json(reset):null})
+  await h.ready();const uploads=h.calls.filter(c=>c.method==='POST' && c.path==='/api/study-packs').length
+  await h.session.restart()
+  const snap=h.session.getSnapshot()
+  assert.equal(snap.attempt,null)
+  assert.equal(snap.result,null)
+  assert.equal(snap.status.xp,100)
+  assert.deepEqual(snap.player.villains.map((v)=>v.status),['current','locked','locked'])
+  assert.equal(h.calls.filter(c=>c.path==='/api/me/restart').length,1)
+  assert.equal(h.calls.filter(c=>c.method==='POST' && c.path==='/api/study-packs').length,uploads)
+})
+
 test('guardian target guards prevent the wolf or dragon from starting the goblin battle', async () => {
   const h=harness({override:async path=>path==='/api/me/state'?json({...balances,username:body.username,rules:{},villains:[{villain_id:'forest-goblin',status:'current'}]}):null})
   await h.ready();await h.session.battle('bridge-troll');await h.session.battle('castle-dragon')
@@ -279,11 +293,18 @@ test('guardian target guards prevent the wolf or dragon from starting the goblin
   await h.session.battle('forest-goblin');assert.equal(h.calls.filter(c=>c.path==='/api/adventure/battles').length,1)
 })
 
-test('HUD displays server health and progress without inventing lives, collection or lifetime totals', () => {
-  const html=render(AdventureHud,{backendStatus:{...balances,xp:77,health:25},stamina:80,player:{villains:[{status:'completed'},{status:'current'},{status:'locked'}]}})
-  assert.match(html,/aria-label="Health"[^>]*aria-valuemax="100"[^>]*aria-valuenow="25"/)
-  assert.match(html,/25\/100/);assert.match(html,/77/);assert.match(html,/1\/3/);assert.match(html,/Leaderboard/)
-  assert.match(html,/Lives: unavailable/);assert.match(html,/Item collection: unavailable/);assert.doesNotMatch(html,/3 lives|550|Lifetime XP: 77/)
+test('zero XP shows a clear Try again banner that lasts three seconds', () => {
+  const html=render(TryAgainBanner)
+  assert.match(html,/try-again-overlay/)
+  assert.match(html,/>Try again</)
+  assert.match(html,/role="status"/)
+})
+
+test('HUD displays server XP and progress without inventing lives, collection or lifetime totals', () => {
+  const html=render(AdventureHud,{backendStatus:{...balances,xp:77,health:25},player:{villains:[{status:'completed'},{status:'current'},{status:'locked'}]}})
+  assert.match(html,/aria-label="XP"[^>]*aria-valuemax="100"[^>]*aria-valuenow="77"/)
+  assert.match(html,/>77</);assert.match(html,/1\/3/);assert.match(html,/Leaderboard/)
+  assert.match(html,/Item collection: unavailable/);assert.doesNotMatch(html,/Health|Stamina|Lives: unavailable|3 lives|550|Lifetime XP: 77/)
 })
 
 test('teaching is available only for item practice and only from the returned learning objective', () => {

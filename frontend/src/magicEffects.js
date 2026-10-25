@@ -19,15 +19,26 @@ export function createMagicEffects(scene, capacity = 128) {
   let cursor = 0, disposed = false, seed = 19
   const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 }
   return {
-    burst(position, { count = 22, color = 0xffd994, gentle = false, reducedMotion = false } = {}) {
+    burst(position, { count = 22, color = 0xffd994, gentle = false, reducedMotion = false, flame = false } = {}) {
       if (disposed) return
       const c = new THREE.Color(color)
-      const total = Math.min(capacity, reducedMotion ? 4 : count)
+      const ember = new THREE.Color(0xff2d00)
+      const total = Math.min(capacity, reducedMotion ? flame ? 8 : 4 : count)
       for (let n = 0; n < total; n++) {
-        const i = cursor++ % capacity, offset = i * 3, angle = random() * Math.PI * 2, speed = reducedMotion ? 0 : gentle ? 0.09 : 0.5 + random() * 0.65
-        positions[offset] = position.x + (random() - 0.5) * 0.65; positions[offset + 1] = position.y + random() * 0.35; positions[offset + 2] = position.z + (random() - 0.5) * 0.65
-        velocity[offset] = Math.cos(angle) * speed; velocity[offset + 1] = reducedMotion ? 0 : gentle ? 0.08 : 0.4 + random() * 0.6; velocity[offset + 2] = Math.sin(angle) * speed
-        tint.set([c.r, c.g, c.b], offset); age[i] = 0; life[i] = reducedMotion ? 0.22 : gentle ? 5 : 0.65 + random() * 0.2
+        const i = cursor++ % capacity, offset = i * 3, angle = random() * Math.PI * 2
+        const heat = flame ? 0.15 + random() * 0.85 : 1
+        const shade = flame ? ember.clone().lerp(c, heat) : c
+        const speed = reducedMotion ? 0 : flame ? 0.35 + random() * 0.7 : gentle ? 0.09 : 0.5 + random() * 0.65
+        const spread = flame ? 0.55 : 0.65
+        positions[offset] = position.x + (random() - 0.5) * spread
+        positions[offset + 1] = position.y + random() * (flame ? 0.7 : 0.35)
+        positions[offset + 2] = position.z + (random() - 0.5) * spread
+        velocity[offset] = Math.cos(angle) * (flame ? speed * 0.35 : speed)
+        velocity[offset + 1] = reducedMotion ? 0 : flame ? 1.15 + random() * 1.8 : gentle ? 0.08 : 0.4 + random() * 0.6
+        velocity[offset + 2] = Math.sin(angle) * (flame ? speed * 0.35 : speed)
+        tint.set([shade.r, shade.g, shade.b], offset)
+        age[i] = 0
+        life[i] = reducedMotion ? 0.22 : flame ? 0.55 + random() * 0.55 : gentle ? 5 : 0.65 + random() * 0.2
       }
     },
     update(dt, reducedMotion = false) {

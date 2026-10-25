@@ -1,22 +1,21 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { createPlayerControls, EYE_HEIGHT } from './playerControls.js'
-import { createPlayerMotion, MAX_STAMINA } from './playerMotion.js'
+import { createPlayerMotion } from './playerMotion.js'
 import { createSwordProp } from './swordProp.js'
 import AdventureHud from './AdventureHud.jsx'
 import { createForestScene, createCastleHallScene } from './forestScene.js'
-import { nearbyForestTarget, nearbyHallTarget, forestEncounterAt } from './forestLayout.js'
+import { nearbyForestTarget, nearbyHallTarget, forestEncounterAt, forestGuardianAnchor, forestGuardianApproachable, speechAnchorFromProjected } from './forestLayout.js'
 import { getForestTarget } from './game/forestContent.js'
 import { createWalkFeel } from './walkFeel.js'
 import { createEncounterTrigger } from './game/encounterTrigger.js'
 
-export default function RoomExperience({ active, playing, session, onPause, backendStatus, player, onLeaderboard, environment = 'forest', controlRef, forestRun, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle }) {
+export default function RoomExperience({ active, playing, session, onPause, backendStatus, player, onLeaderboard, environment = 'forest', controlRef, forestRun, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle, speechTargetId, onSpeechAnchor }) {
   const mountRef = useRef(null)
   const controlsRef = useRef(null)
   const propsRef = useRef({})
   const [locked, setLocked] = useState(false)
   const [nearby, setNearby] = useState(null)
-  const [vitals, setVitals] = useState({ stamina: MAX_STAMINA, exhausted: false })
   const [respawned, setRespawned] = useState(false)
   const forest = environment === 'forest'
   const hall = environment === 'castle'
@@ -31,8 +30,8 @@ export default function RoomExperience({ active, playing, session, onPause, back
   }), [])
 
   useEffect(() => {
-    propsRef.current = { active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle }
-  }, [active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle])
+    propsRef.current = { active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle, speechTargetId, onSpeechAnchor }
+  }, [active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle, speechTargetId, onSpeechAnchor])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -66,10 +65,11 @@ export default function RoomExperience({ active, playing, session, onPause, back
     let lastNearby = null
     let exited = false
     let disposed = false
-    let hudElapsed = 0
     let noticeTimer
     const walkFeel = createWalkFeel()
     const encounterTrigger = createEncounterTrigger()
+    const projected = new THREE.Vector3()
+    let lastSpeech = ''
     let bobOffset = 0, swayX = 0, swayZ = 0
     const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
     let reducedMotion = motionPreference.matches
@@ -120,7 +120,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
       camera.position.x -= swayX; camera.position.z -= swayZ
       bobOffset = 0; swayX = 0; swayZ = 0
       const beforeX = camera.position.x, beforeZ = camera.position.z
-      room.update(dt, { ...propsRef.current, playerPosition: motion?.position, reducedMotion })
+      room.update(dt, { ...propsRef.current, playerPosition: motion?.position, reducedMotion, onGuardianAppear: (id) => soundRef?.current?.play(id) })
       controls.update(dt, propsRef.current)
       if (adventuring && controls.active) {
         const nextNearby = forestTarget()
@@ -129,17 +129,11 @@ export default function RoomExperience({ active, playing, session, onPause, back
           if (getForestTarget(nextNearby) && !(nextNearby === 'dragon' && propsRef.current.forestRun?.dragonDefeated)) soundRef?.current?.play('approach')
         }
         const encounter = forest ? forestEncounterAt(physicalPosition(), propsRef.current.forestRun) : null
-        const triggered = encounterTrigger.update(encounter, propsRef.current.forestRun.availableTargetIds.includes(encounter))
+        const triggered = encounterTrigger.update(encounter, forestGuardianApproachable(propsRef.current.forestRun, encounter))
         if (triggered) controls.suspend(() => propsRef.current.onForestInteract?.(triggered))
-        if (forest && propsRef.current.forestRun.bridgeState === 'lowered' && camera.position.z < -32.4 && !exited) {
+        if (forest && propsRef.current.forestRun?.bridgeState === 'lowered' && camera.position.z < -32.4 && !exited) {
           exited = true
           controls.suspend(() => propsRef.current.onForestEnterCastle?.())
-        }
-        hudElapsed += dt
-        if (hudElapsed >= 0.1) {
-          hudElapsed = 0
-          const stamina = Math.round(motion.stamina)
-          setVitals((old) => old.stamina === stamina && old.exhausted === motion.exhausted ? old : { stamina, exhausted: motion.exhausted })
         }
       }
       if (forest || hall) {
@@ -151,6 +145,16 @@ export default function RoomExperience({ active, playing, session, onPause, back
         camera.position.x += swayX; camera.position.z += swayZ
         if (feel.step) soundRef?.current?.play('footstep')
       }
+      const targetId = propsRef.current.speechTargetId
+      if (forest && targetId) {
+        const world = forestGuardianAnchor(targetId, propsRef.current.forestRun?.layout)
+        if (world) {
+          projected.set(world.x, world.y, world.z).project(camera)
+          const next = speechAnchorFromProjected(projected)
+          const key = targetId + ':' + next.x + ':' + next.y + ':' + next.visible
+          if (key !== lastSpeech) { lastSpeech = key; propsRef.current.onSpeechAnchor?.(next) }
+        }
+      } else if (lastSpeech) { lastSpeech = ''; propsRef.current.onSpeechAnchor?.(null) }
       renderer.render(room.scene, camera)
       frameId = requestAnimationFrame(tick)
     }
@@ -180,7 +184,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
       <div className="palace-stage" ref={mountRef} inert={!active} />
       {playing && <div className={'palace-hud' + (!active ? ' hud-paused' : '')} inert={!active}>
         <div className="palace-crosshair" aria-hidden="true" />
-        <AdventureHud backendStatus={backendStatus} player={player} onLeaderboard={onLeaderboard} stamina={vitals.stamina} exhausted={vitals.exhausted} nearBridge={nearby === 'forest-gate'} respawned={respawned} />
+        <AdventureHud backendStatus={backendStatus} player={player} onLeaderboard={onLeaderboard} nearBridge={nearby === 'forest-gate'} respawned={respawned} />
         {fairytaleItem && <div key={nearby} className="door-prompt forest-interaction" role="status"><strong>{fairytaleItem.name}</strong><p>Press E to {fairytaleItem.kind === 'combat' ? 'face this challenger' : 'continue this story'}.</p></div>}
         {hall && nearby === 'princess' && <div className="door-prompt" role="status"><strong>The Storywood Princess</strong><p>Press E to speak with the princess.</p></div>}
         {hall && nearby === 'hall-exit' && <div className="door-prompt" role="status"><strong>The forest awaits</strong><p>Press E to return to the castle bridge.</p></div>}

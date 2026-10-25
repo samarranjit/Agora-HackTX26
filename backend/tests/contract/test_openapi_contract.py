@@ -114,6 +114,7 @@ class OpenApiContractTests(unittest.TestCase):
             ("get", "/api/me/state"),
             ("get", "/api/me/status"),
             ("get", "/api/me/export"),
+            ("post", "/api/me/restart"),
             ("get", "/api/me/active-attempt"),
             ("post", "/api/practice/attempts"),
             ("post", "/api/adventure/battles"),

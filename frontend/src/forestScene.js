@@ -4,9 +4,44 @@ import { buildPalace } from './palaceArchitecture.js'
 import { disposeScene } from './sceneResources.js'
 import { createFairytaleItem, createStoryDragon, createBigBadWolf, createStoryPrincess } from './storybookProps.js'
 import { FOREST_COLLECTIBLES } from './game/forestContent.js'
-import { createForestWorld, createHallWorld, FOREST_PATH, DEFAULT_FOREST_LAYOUT, forestHeight, pathX, HALL, hallHeight } from './forestLayout.js'
+import { createForestWorld, createHallWorld, FOREST_PATH, DEFAULT_FOREST_LAYOUT, forestHeight, pathX, HALL, HALL_FLOOR, hallHeight, forestEncounterRange } from './forestLayout.js'
 import { createMagicEffects } from './magicEffects.js'
 import { createForestGoblin } from './forestGoblin.js'
+
+function eachGuardianMaterial(root, visit) {
+  root.traverse((child) => {
+    if (!child.isMesh || !child.material) return
+    const materials = Array.isArray(child.material) ? child.material : [child.material]
+    materials.forEach(visit)
+  })
+}
+function igniteGuardian(root) {
+  eachGuardianMaterial(root, (material) => {
+    if (!material.emissive) return
+    if (material.userData.unburnt == null) {
+      material.userData.unburnt = { color: material.color.getHex(), emissive: material.emissive.getHex(), intensity: material.emissiveIntensity }
+    }
+    material.color.setHex(0xff7a28)
+    material.emissive.setHex(0xff3b0a)
+    material.emissiveIntensity = 1.15
+  })
+}
+function heatGuardian(root, amount) {
+  eachGuardianMaterial(root, (material) => {
+    if (!material.emissive) return
+    material.emissiveIntensity = 1.15 + amount * 1.8
+    material.color.lerp(new THREE.Color(0xfff2b0), amount * 0.35)
+  })
+}
+function restoreGuardian(root) {
+  eachGuardianMaterial(root, (material) => {
+    const saved = material.userData.unburnt
+    if (!saved || !material.emissive) return
+    material.color.setHex(saved.color)
+    material.emissive.setHex(saved.emissive)
+    material.emissiveIntensity = saved.intensity
+  })
+}
 
 function palette() {
   const colors = { stone: 0xe3c9ab, trim: 0xf8dfb2, shadowStone: 0xb59994, foundation: 0x756d87, roof: 0x394777, royal: 0x702c70, gold: 0xe4b662, iron: 0x393c50, window: 0xffce83, gateDark: 0x262438, grass: 0x59795f, lawn: 0x406554, path: 0xccb68e, wood: 0x634b44, woodLight: 0x987357, leaves: 0x365d56, leavesLight: 0x67866a, leavesGold: 0x8a956d, birch: 0xd9cbb2, flower: 0xbb8bb7, water: 0x6ca9ae, ripple: 0xb7d6cb, distant: 0x80989a }
@@ -113,8 +148,11 @@ export function createForestScene({ spawnId = 'start', layout = DEFAULT_FOREST_L
   })
   const enemies = layout.encounters.map((spot) => {
     const model = spot.id === 'goblin' ? createForestGoblin() : createBigBadWolf()
-    model.root.position.set(spot.x, height(spot.x, spot.z), spot.z); scene.add(model.root)
-    return { ...spot, model, defeated: false }
+    model.root.position.set(spot.x, height(spot.x, spot.z), spot.z)
+    model.root.visible = false
+    model.root.scale.setScalar(0)
+    scene.add(model.root)
+    return { ...spot, model, defeated: false, burn: 0, ember: 0, revealed: false, pop: 0 }
   })
   builder.flush()
   const bridge = new THREE.Group(); bridge.position.set(0, 8.1, -31); bridge.rotation.x = -Math.PI / 2
@@ -128,11 +166,11 @@ export function createForestScene({ spawnId = 'start', layout = DEFAULT_FOREST_L
   for (let x = -2.8; x <= 2.8; x += 0.7) gateBuilder.put('box', 'iron', [x, 3.5, 0.2], [0.12, 7, 0.12])
   for (const y of [1.5, 3.5, 5.5]) gateBuilder.put('box', 'iron', [0, y, 0.2], [5.8, 0.12, 0.16])
   gateBuilder.flush(); scene.add(gate)
-  const effects = createMagicEffects(scene)
+  const effects = createMagicEffects(scene, 220)
   let elapsed = 0, announced = false, disposed = false, initialized = false, moteTime = 0
   return {
     scene, world, get spawn() { return world.spawn },
-    update(dt, { forestRun, onForestBridgeLowered, playerPosition, reducedMotion = false } = {}) {
+    update(dt, { forestRun, onForestBridgeLowered, onGuardianAppear, playerPosition, reducedMotion = false } = {}) {
       if (disposed) return
       elapsed += dt
       items.forEach((entry) => {
@@ -156,10 +194,68 @@ export function createForestScene({ spawnId = 'start', layout = DEFAULT_FOREST_L
       })
       enemies.forEach((enemy) => {
         const defeated = !!forestRun?.defeatedEnemyIds.includes(enemy.id)
-        if (initialized && defeated && !enemy.defeated) effects.burst({ x: enemy.x, y: height(enemy.x, enemy.z) + 1.4, z: enemy.z }, { color: 0xd6dba8, reducedMotion })
-        enemy.defeated = defeated
-        enemy.model.root.visible = !!forestRun && !defeated
-        if (enemy.model.root.visible) enemy.model.update(reducedMotion ? 0 : elapsed)
+        const summonable = !!forestRun?.summonableEnemyIds?.includes(enemy.id)
+        const ground = height(enemy.x, enemy.z)
+        const near = forestEncounterRange(playerPosition, enemy, forestRun?.layout)
+        if (summonable && near && !enemy.revealed) {
+          enemy.revealed = true
+          enemy.pop = reducedMotion ? 1 : 0
+          effects.burst({ x: enemy.x, y: ground + 1.1, z: enemy.z }, { count: 18, color: 0xe8ce95, reducedMotion })
+          onGuardianAppear?.(enemy.id)
+        }
+        if (!summonable && !defeated) {
+          enemy.revealed = false
+          enemy.pop = 0
+          enemy.defeated = false
+          enemy.burn = 0
+          enemy.model.root.visible = false
+          enemy.model.root.scale.setScalar(0)
+          return
+        }
+        if (initialized && defeated && !enemy.defeated) {
+          enemy.defeated = true
+          enemy.revealed = true
+          enemy.burn = reducedMotion ? 1 : 0
+          enemy.ember = 0
+          igniteGuardian(enemy.model.root)
+          effects.burst({ x: enemy.x, y: ground + 0.5, z: enemy.z }, { count: 52, color: 0xff7a1a, flame: true, reducedMotion })
+          effects.burst({ x: enemy.x, y: ground + 1.3, z: enemy.z }, { count: 36, color: 0xffd24a, flame: true, reducedMotion })
+          effects.burst({ x: enemy.x, y: ground + 2.2, z: enemy.z }, { count: 22, color: 0xfff4c2, flame: true, reducedMotion })
+        }
+        if (!defeated) {
+          if (enemy.defeated || enemy.burn) restoreGuardian(enemy.model.root)
+          enemy.defeated = false
+          enemy.burn = 0
+          enemy.ember = 0
+          if (!enemy.revealed) {
+            enemy.model.root.visible = false
+            enemy.model.root.scale.setScalar(0)
+            return
+          }
+          enemy.pop = Math.min(1, enemy.pop + dt / 0.32)
+          const t = enemy.pop
+          const scale = reducedMotion || t >= 1 ? 1 : t < 0.72 ? 0.15 + t * 1.4 : 1.16 - (t - 0.72) * 0.57
+          enemy.model.root.visible = true
+          enemy.model.root.scale.setScalar(scale)
+          enemy.model.root.position.set(enemy.x, ground + (1 - t) * 0.55, enemy.z)
+          enemy.model.root.rotation.y = 0
+          if (enemy.model.root.visible) enemy.model.update(reducedMotion ? 0 : elapsed)
+          return
+        }
+        if (enemy.burn < 1) {
+          enemy.burn = Math.min(1, enemy.burn + dt / 0.38)
+          enemy.ember += dt
+          const t = enemy.burn
+          enemy.model.root.scale.setScalar(Math.max(0, 1 - t * 2.4))
+          enemy.model.root.position.y = ground + t * 0.35
+          enemy.model.root.rotation.y += dt * (1.6 + t * 5)
+          heatGuardian(enemy.model.root, t)
+          if (!reducedMotion && t < 0.7 && enemy.ember > 0.04) {
+            enemy.ember = 0
+            effects.burst({ x: enemy.x, y: ground + 0.35 + t * 1.2, z: enemy.z }, { count: 10, color: t > 0.35 ? 0xfff1a0 : 0xff5a12, flame: true })
+          }
+        }
+        enemy.model.root.visible = !!forestRun && enemy.burn < 0.55
       })
       if (!initialized && forestRun?.bridgeState === 'lowered') announced = true
       if (forestRun) initialized = true
@@ -183,11 +279,13 @@ export function createForestScene({ spawnId = 'start', layout = DEFAULT_FOREST_L
 
 export function createCastleHallScene() {
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x25263b); scene.fog = new THREE.Fog(0x25263b, 85, 230)
-  const materials = palette(), { put, flush } = createSceneBuilder(scene, materials)
+  const materials = palette(), built = createSceneBuilder(scene, materials)
+  const put = (shape, mat, [x, y, z], ...rest) => built.put(shape, mat, [x, y + HALL_FLOOR, z], ...rest)
+  const flush = built.flush
   scene.userData.ownedMaterials = Object.values(materials)
   const floor = new THREE.PlaneGeometry(80, 152, 80, 152); floor.rotateX(-Math.PI / 2)
   const vertices = floor.attributes.position
-  for (let i = 0; i < vertices.count; i++) vertices.setY(i, hallHeight(vertices.getX(i), vertices.getZ(i)))
+  for (let i = 0; i < vertices.count; i++) vertices.setY(i, HALL_FLOOR + hallHeight(vertices.getX(i), vertices.getZ(i)))
   floor.computeVertexNormals(); const paving = new THREE.Mesh(floor, materials.shadowStone); paving.receiveShadow = true; scene.add(paving)
   for (let z = -70; z < 74; z += 2) put('box', 'royal', [0, hallHeight(0, z) + 0.035, z], [10, 0.05, 2], [z < -34 && z > -48 ? Math.atan(3 / 14) : 0, 0, 0], false)
   for (const x of [-40, 40]) {
@@ -247,27 +345,34 @@ export function createCastleHallScene() {
   const gateBuilder = createSceneBuilder(prisonGate, materials)
   for (let x = -11; x <= 11; x += 1) gateBuilder.put('box', 'iron', [x, 6, 0], [0.16, 12, 0.2])
   for (const y of [1, 6, 11]) gateBuilder.put('box', 'gold', [0, y, 0], [23, 0.2, 0.3])
-  gateBuilder.flush(); scene.add(prisonGate)
+  gateBuilder.flush(); prisonGate.position.y += HALL_FLOOR; scene.add(prisonGate)
   scene.add(new THREE.HemisphereLight(0xc0bcf0, 0x8b6e60, 1.9))
-  const key = new THREE.DirectionalLight(0xffddad, 2); key.position.set(-15, 38, 25); key.target.position.set(0, 3, -45); key.castShadow = true
+  const key = new THREE.DirectionalLight(0xffddad, 2); key.position.set(-15, HALL_FLOOR + 38, 25); key.target.position.set(0, HALL_FLOOR + 3, -45); key.castShadow = true
   Object.assign(key.shadow.camera, { left: -42, right: 42, top: 90, bottom: -90, near: 1, far: 180 }); key.shadow.mapSize.set(2048, 2048); key.shadow.normalBias = 0.08
   scene.add(key, key.target)
-  for (const z of [40, -15, -60]) { const light = new THREE.PointLight(0xffbb77, 300, 75, 1.4); light.position.set(9, 14, z); scene.add(light) }
-  const dragon = createStoryDragon(); dragon.root.position.set(HALL.dragon.x, hallHeight(HALL.dragon.x, HALL.dragon.z), HALL.dragon.z); dragon.root.scale.setScalar(HALL.dragon.scale); scene.add(dragon.root)
-  const princess = createStoryPrincess(); princess.position.set(HALL.princess.x, 4, HALL.princess.z); princess.scale.setScalar(1.8); scene.add(princess)
+  for (const z of [40, -15, -60]) { const light = new THREE.PointLight(0xffbb77, 300, 75, 1.4); light.position.set(9, HALL_FLOOR + 14, z); scene.add(light) }
+  const dragon = createStoryDragon(); dragon.root.position.set(HALL.dragon.x, HALL_FLOOR + hallHeight(HALL.dragon.x, HALL.dragon.z), HALL.dragon.z); dragon.root.scale.setScalar(HALL.dragon.scale); scene.add(dragon.root)
+  const princess = createStoryPrincess(); princess.position.set(HALL.princess.x, HALL_FLOOR + 4, HALL.princess.z); princess.scale.setScalar(1.8); scene.add(princess)
   const effects = createMagicEffects(scene, 64)
-  let elapsed = 0, disposed = false, entered = false, won = false
+  let elapsed = 0, disposed = false, entered = false, won = false, emberClock = 0
+  const mouth = new THREE.Vector3()
   const world = createHallWorld()
   return { scene, world, spawn: world.spawn, update(dt, { forestRun, reducedMotion = false } = {}) {
     if (disposed) return
     world.setDragonDefeated(forestRun?.dragonDefeated)
     // The server unlocks collision immediately; bars retract fully in the same
     // frame to avoid a visually closed gate with an already open passage.
-    prisonGate.position.y = forestRun?.dragonDefeated ? 17 : 3
+    prisonGate.position.y = HALL_FLOOR + (forestRun?.dragonDefeated ? 17 : 3)
     elapsed += dt
-    if (!entered) { entered = true; won = !!forestRun?.dragonDefeated; effects.burst({ x: HALL.dragon.x, y: 6, z: HALL.dragon.z + 3 }, { count: 12, color: 0xbba2df, reducedMotion }) }
-    if (forestRun?.dragonDefeated && !won) { won = true; effects.burst({ x: HALL.dragon.x, y: 7, z: HALL.dragon.z + 3 }, { count: 30, color: 0xffda89, reducedMotion }) }
+    if (!entered) { entered = true; won = !!forestRun?.dragonDefeated; effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 6, z: HALL.dragon.z + 3 }, { count: 12, color: 0xbba2df, reducedMotion }) }
+    if (forestRun?.dragonDefeated && !won) { won = true; effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 7, z: HALL.dragon.z + 3 }, { count: 30, color: 0xffda89, reducedMotion }) }
     dragon.update(reducedMotion ? 0 : elapsed, forestRun?.dragonDefeated)
+    emberClock += dt
+    if (!reducedMotion && dragon.state.heat > 0.3 && emberClock > 0.1) {
+      emberClock = 0
+      dragon.mouth(mouth)
+      effects.burst({ x: mouth.x, y: mouth.y, z: mouth.z }, { count: 3, color: 0xffb04a, flame: true })
+    }
     effects.update(dt, reducedMotion)
   }, dispose() { if (!disposed) { disposed = true; effects.dispose(); disposeScene(scene) } } }
 }

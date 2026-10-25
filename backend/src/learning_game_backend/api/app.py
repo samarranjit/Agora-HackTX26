@@ -7,6 +7,7 @@ compression, and error handling together. Run the server with
 
 import logging
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -61,7 +62,19 @@ def create_app(
     settings = settings or Settings.from_env()
     if game_master is None:
         game_master = build_game_master(settings)
-    service = GameService(settings, game_master, rules)
+    service = GameService(
+        settings,
+        game_master,
+        replace(
+            rules,
+            starting_xp=settings.starting_xp,
+            battle_cost=settings.battle_cost,
+            award_battle_xp=settings.award_battle_xp,
+            practice_cost=settings.practice_cost,
+            practice_correct_xp=settings.practice_correct_xp,
+            battle_wrong_xp=settings.battle_wrong_xp,
+        ),
+    )
 
     migrate(settings.database_path)
     recovered = service.recover_interrupted_jobs()

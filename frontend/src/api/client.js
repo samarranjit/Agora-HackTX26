@@ -49,6 +49,7 @@ export function createApiClient({ baseUrl = API_BASE_URL, fetchImpl = globalThis
     register: (body) => request('/api/auth/register', { method: 'POST', body, auth: false }),
     login: (body) => request('/api/auth/login', { method: 'POST', body, auth: false }),
     status: () => request('/api/me/status'), state: () => request('/api/me/state'), active: () => request('/api/me/active-attempt'),
+    restart: () => request('/api/me/restart', { method: 'POST' }),
     studyPacks: (signal) => request('/api/study-packs', { signal }),
     createStudyPack: (file, { signal } = {}) => { const body = new FormData(); body.append('file', file); return request('/api/study-packs', { method: 'POST', body, signal }) },
     studyPack: (id, signal) => request('/api/study-packs/' + encodeURIComponent(id), { signal }),
