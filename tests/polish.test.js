@@ -5,7 +5,7 @@ import { createWalkFeel } from '../src/walkFeel.js'
 import { createStoryAudio } from '../src/audio/storyAudio.js'
 import { createMagicEffects } from '../src/magicEffects.js'
 import { createForestScene, createCastleHallScene } from '../src/forestScene.js'
-import { createForestRun } from '../src/game/forestRun.js'
+import { createForestView } from '../src/game/forestView.js'
 
 test('walk feel follows actual distance, settles without drift, and disables bob off the ground', () => {
   const feel = createWalkFeel()
@@ -105,7 +105,7 @@ test('particle pool is bounded, reduced motion is stationary, and resources disp
 })
 
 test('all item visuals spin with distinct float phases; collection is visual only and does not replay', () => {
-  const handle = createForestScene(), run = createForestRun()
+  const handle = createForestScene(), run = createForestView()
   const items = handle.scene.children.filter((node) => node.name.startsWith('fairytale-'))
   assert.equal(items.length, 5)
   handle.update(0, { forestRun: run })
@@ -128,7 +128,7 @@ test('all item visuals spin with distinct float phases; collection is visual onl
 })
 
 test('dragon completion sparkles are emitted once, expire, and do not change progress', () => {
-  const handle = createCastleHallScene(), run = createForestRun()
+  const handle = createCastleHallScene(), run = createForestView()
   handle.update(1, { forestRun: run }) // Finish the entrance cue.
   const victory = { ...run, stage: 'castle', dragonDefeated: true, xp: 100 }
   handle.update(0, { forestRun: victory })

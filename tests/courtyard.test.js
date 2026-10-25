@@ -3,7 +3,6 @@ import test from 'node:test'
 import { createPlayerMotion, MAX_STAMINA, WALK_SPEED, SPRINT_SPEED } from '../src/playerMotion.js'
 import { COURTYARD_WORLD, COURTYARD_SPAWN, COLLIDERS, moveInCourtyard, courtyardGroundHeight, isSolid } from '../src/courtyardLayout.js'
 import { createCourtyardScene } from '../src/courtyardScene.js'
-import { createInitialRunState } from '../src/game/runState.js'
 
 const idle = { x: 0, z: 0, sprint: false, jump: false }
 const flatWorld = { ...COURTYARD_WORLD, move: (_, target) => target, groundHeight: () => 0, needsRespawn: () => false }
@@ -51,9 +50,7 @@ test('stamina exhausts, forces walking and recovers without toggling sprint ever
 })
 
 test('moat fall respawns once, clears velocity and leaves run data untouched', () => {
-  const run = createInitialRunState('hard')
-  run.xp = 15
-  run.collectedRelicIds.push('future-progress-fixture')
+  const run = { xp: 15, collectedRelicIds: ['server-completion-fixture'] }
   const before = structuredClone(run)
   const motion = createPlayerMotion(COURTYARD_WORLD)
   Object.assign(motion.position, { x: 21, y: 0, z: 12 }) // Eastern moat opening.

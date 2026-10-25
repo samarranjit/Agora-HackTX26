@@ -1,3 +1,7 @@
+# Historical integration validation
+
+The current account-free implementation is documented in [ACCOUNT_FREE_VALIDATION.md](ACCOUNT_FREE_VALIDATION.md). Account/offline behavior and results below are retired historical records, not current player capabilities.
+
 # Integration validation
 
 ## Current root forest account mode — 2026-10-25

@@ -1,68 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as THREE from 'three'
-import { DIFFICULTIES, DEFAULT_DIFFICULTY_ID, getDifficulty, PLAYER_MAX_HEARTS, RELIC_XP_REWARD } from '../src/game/difficulty.js'
-import { createInitialRunState, resetRunState } from '../src/game/runState.js'
 import { createPlayerControls, EYE_HEIGHT } from '../src/playerControls.js'
 import { createRoomScene, collide } from '../src/roomScene.js'
-import { SAMPLE_MEMORIES, isCorrectAnswer } from '../src/memories.js'
 
-test('difficulty configuration matches all required defaults and is immutable', () => {
-  assert.equal(DEFAULT_DIFFICULTY_ID, 'easy')
-  assert.equal(RELIC_XP_REWARD, 5)
-  assert.equal(PLAYER_MAX_HEARTS, 3)
-  const expected = { easy: [5, 5, 25, 3, 5], medium: [10, 7, 50, 4, 10], hard: [20, 9, 100, 5, 20] }
-  assert.deepEqual(Object.keys(DIFFICULTIES), Object.keys(expected))
-  for (const [id, values] of Object.entries(expected)) {
-    const config = getDifficulty(id)
-    assert.equal(config.id, id)
-    assert.deepEqual([config.relicCount, config.floorCount, config.adventureUnlockXp, config.floorEnemyHearts, config.dragonHearts], values)
-    assert.equal(config.relicCount * RELIC_XP_REWARD, config.adventureUnlockXp)
-    assert.ok(Object.isFrozen(config))
-  }
-  assert.ok(Object.isFrozen(DIFFICULTIES))
-  assert.throws(() => { DIFFICULTIES.easy.relicCount = 99 }, TypeError)
-})
-
-test('unknown and inherited difficulty IDs safely fall back to Easy', () => {
-  for (const id of [undefined, null, '', 'Easy', 'extreme', 'constructor', 'toString', '__proto__', 1, {}, ['hard']]) {
-    assert.equal(getDifficulty(id), DIFFICULTIES.easy)
-    assert.equal(createInitialRunState(id).difficultyId, 'easy')
-  }
-})
-
-test('new runs and resets own fresh mutable data and preserve only selected difficulty', () => {
-  const previous = createInitialRunState('hard')
-  const snapshot = structuredClone(previous)
-  previous.xp = 50
-  previous.collectedRelicIds.push('practice-relic')
-  previous.clearedFloors.push(1)
-  previous.currentFloor = 2
-  previous.checkpoint.floor = 2
-  previous.playerHearts = 1
-  previous.bridgeState = 'lowered'
-  previous.finalEncounter.status = 'defeated'
-  previous.room.loaded = true
-  previous.room.unlocked = true
-  previous.room.discovered.push('mitochondria')
-  const reset = resetRunState(previous)
-  assert.deepEqual(reset, snapshot)
-  assert.equal(previous.xp, 50, 'reset must not mutate its argument')
-  const fresh = createInitialRunState('hard')
-  for (const field of ['collectedRelicIds', 'clearedFloors', 'checkpoint', 'finalEncounter', 'room']) {
-    assert.notEqual(reset[field], previous[field])
-    assert.notEqual(reset[field], fresh[field])
-  }
-  assert.notEqual(reset.room.discovered, fresh.room.discovered)
-  assert.equal(resetRunState().difficultyId, 'easy')
-  for (const id of Object.keys(DIFFICULTIES)) {
-    const run = createInitialRunState(id)
-    assert.equal(run.playerHearts, PLAYER_MAX_HEARTS)
-    assert.equal(run.finalEncounter.hearts, getDifficulty(id).dragonHearts)
-    assert.equal(run.currentFloor, null)
-    assert.equal(run.xp, 0)
-  }
-})
+const SCENE_ITEMS = ['power-bean', 'royal-vault', 'protein-chef'].map((shape, i) => ({id: 'visual-' + i, shape, color: 0x66aacc}))
 
 // Small DOM event doubles exercise the actual controller without a DOM package.
 class EventTargetDouble {
@@ -304,8 +246,8 @@ test('pointer-lock requests completing after dispose release the old canvas with
 })
 
 test('room handle keeps fact associations, animates the gate and disposes owned resources once', () => {
-  const room = createRoomScene(SAMPLE_MEMORIES)
-  assert.deepEqual(room.objects.map((object) => object.userData.memoryId), SAMPLE_MEMORIES.map((memory) => memory.id))
+  const room = createRoomScene(SCENE_ITEMS)
+  assert.deepEqual(room.objects.map((object) => object.userData.memoryId), SCENE_ITEMS.map((memory) => memory.id))
   const resources = new Set()
   const counts = new Map()
   room.scene.traverse((node) => {
@@ -327,15 +269,10 @@ test('room handle keeps fact associations, animates the gate and disposes owned 
   counts.forEach((count) => assert.equal(count, 1))
 })
 
-test('existing wall/pedestal/door collisions and accepted answers remain intact', () => {
+test('existing wall, pedestal and door collisions remain intact', () => {
   assert.ok(collide(0, 7, false, 5.5).z < 6)
   assert.equal(collide(0, 7, true, 5.5).z, 7)
   assert.ok(collide(2, 7, true, 5.5).z < 6)
   const position = collide(-3.1, -3.4)
   assert.ok(Math.hypot(position.x + 3.2, position.z + 3.4) >= 0.729)
-  for (const memory of SAMPLE_MEMORIES) {
-    for (const answer of memory.answers) assert.ok(isCorrectAnswer(memory, '  ' + answer.toUpperCase() + '  '))
-    assert.equal(isCorrectAnswer(memory, ''), false)
-    assert.equal(isCorrectAnswer(memory, 'incorrect'), false)
-  }
 })

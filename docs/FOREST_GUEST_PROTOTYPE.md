@@ -1,3 +1,7 @@
+# Retired offline prototype — historical record
+
+The account-free PDF task supersedes every play/setup instruction below. These offline and account routes no longer exist in the root app. Only the forest/castle visuals and controls were retained. Current behavior and the anonymous-backend blocker are documented in [ACCOUNT_FREE_BACKEND.md](ACCOUNT_FREE_BACKEND.md) and [ACCOUNT_FREE_VALIDATION.md](ACCOUNT_FREE_VALIDATION.md).
+
 # Storywood guest adventure
 
 **Current mode selection:** the guest adventure below remains offline with unchanged gameplay rules. The landing also offers an explicitly selected authenticated account mode when `VITE_API_BASE_URL` is configured. Account PDF processing now uses the verified `origin/main` study-pack contract. Older references below to an unmapped anonymous upload are historical; that seam has been replaced. See [BACKEND_MODE.md](BACKEND_MODE.md) for current account behavior and API limits.
