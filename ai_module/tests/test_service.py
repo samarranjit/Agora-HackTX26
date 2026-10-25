@@ -46,6 +46,7 @@ class FakeEngine:
         self.stores_used = []
         self.fail_index = False
         self.fail_write = False
+        self.recitation_blocks = 0  # how many calls Gemini's recitation filter blocks first
         self.labels = None  # override Gemini's difficulty labels
         self.count_delta = 0  # return this many extra (or fewer) questions
         self.quote = "The intuition behind this important result relies on understanding perceptrons."
@@ -62,6 +63,10 @@ class FakeEngine:
     def write_questions(self, prompt, store_names):
         if self.fail_write:
             raise RuntimeError("quota exhausted: secret internal detail")
+        if self.recitation_blocks:
+            self.recitation_blocks -= 1
+            self.prompts.append(prompt)
+            raise RuntimeError("Request blocked due to copyright/recitation content. Please modify your input and retry.")
         self.prompts.append(prompt)
         self.stores_used.append(list(store_names))
         levels = [int(m) for m in re.findall(r"Question \d+: difficulty (\d)", prompt)]
@@ -262,12 +267,12 @@ class GenerationTests(ServiceTestCase):
         payload = self.generate(mode="adventure", count=3).json()
         self.assertEqual([q["difficulty"] for q in payload["questions"]], [1, 3, 5])
 
-    def test_a_wrong_question_count_is_retried_once_then_reported(self):
+    def test_a_wrong_question_count_is_retried_then_reported(self):
         self.engine.count_delta = -1
         response = self.generate(count=4)
         self.assertEqual(response.status_code, 502)
         self.assertIn("did not return 4 questions", response.json()["error"])
-        self.assertEqual(len(self.engine.prompts), 2)
+        self.assertEqual(len(self.engine.prompts), 3)
         self.assertIn("expected 4 questions, got 3", self.engine.prompts[1])
 
     def test_gemini_failures_become_a_safe_error(self):
@@ -276,6 +281,21 @@ class GenerationTests(ServiceTestCase):
         self.assertEqual(response.status_code, 502)
         self.assertNotIn("secret", response.text)
         self.assertEqual(set(response.json()), {"error"})
+
+    def test_a_recitation_block_is_retried_asking_for_own_words(self):
+        self.engine.recitation_blocks = 1
+        response = self.generate()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(self.engine.prompts), 2)
+        self.assertNotIn("own words", self.engine.prompts[0])
+        self.assertIn("in your own words", self.engine.prompts[1])
+
+    def test_repeated_recitation_blocks_end_in_a_safe_error(self):
+        self.engine.recitation_blocks = 10
+        response = self.generate()
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(set(response.json()), {"error"})
+        self.assertNotIn("recitation", response.text)
 
     def test_unknown_documents_and_bad_requests_use_the_error_shape(self):
         unknown = self.generate(document_ids=["c" * 32])
