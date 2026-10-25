@@ -17,7 +17,7 @@ export function AuthForm({ session, state }) {
   const [mode, setMode] = useState('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  if (state.signedIn) return <><PlayerStatus state={state} /><div className="button-row"><button className="secondary" disabled={state.busy} onClick={() => session.refresh()}>Reconnect / recover question</button><button className="secondary" disabled={state.busy || !!state.unresolved} onClick={() => session.logout()}>Sign out</button></div></>
+  if (state.signedIn) return <><PlayerStatus state={state} /><div className="button-row"><button className="secondary" disabled={state.busy} onClick={() => session.refresh()}>Reconnect / recover question</button><button className="secondary" disabled={state.busy || state.packBusy || !!state.unresolved} onClick={() => session.logout()}>Sign out</button></div></>
   return <form onSubmit={(e) => { e.preventDefault(); session.authenticate(mode, { username, password }).then(() => setPassword('')) }}>
     <p>Sign in to your learning adventure, or create an account.</p>
     <label>Username<input data-autofocus autoComplete="username" required minLength={3} maxLength={32} pattern="[A-Za-z0-9_.-]+" value={username} onChange={(e) => setUsername(e.target.value)} disabled={state.busy} /></label>
@@ -41,7 +41,7 @@ export function Encounter({ session, state }) {
     {r.encounter.question_count && <p>{r.encounter.correct_count} correct / {r.encounter.question_count} battle questions</p>}
     {r.encounter.adventure_unlocked_now && <p>Adventure is now unlocked!</p>}
     {r.encounter.adventure_completed && <p>You completed the adventure.</p>}
-    <button className="primary full-width" disabled={state.busy} onClick={() => q ? session.continue() : session.practice()}>{q ? 'Continue to the next question' : 'Practice another question'}</button>
+    <button className="primary full-width" disabled={state.busy || !!state.unresolved} onClick={() => { session.continue(); if (!q) session.practice() }}>{q ? 'Continue to the next question' : 'Practice another question'}</button>
     {!q && <button className="secondary full-width" disabled={state.busy} onClick={() => session.continue()}>Finish review</button>}
   </div>
   if (!q) return <p>{state.busy ? 'Awaiting the backend…' : 'No pending question. Start practice to earn XP, or approach the Forest Goblin to challenge the next palace guardian.'}</p>

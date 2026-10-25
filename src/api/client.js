@@ -16,9 +16,10 @@ export function sanitize(value, secrets = []) {
   return value
 }
 
-export function createApiClient({ baseUrl = 'http://127.0.0.1:8000', getToken = () => null, onUnauthorized = () => {}, onRequest = () => {}, fetchImpl = globalThis.fetch, timeoutMs = 20000 } = {}) {
+export function createApiClient({ baseUrl = 'http://127.0.0.1:8796', getToken = () => null, onUnauthorized = () => {}, onRequest = () => {}, fetchImpl = globalThis.fetch, timeoutMs = 20000 } = {}) {
   const base = baseUrl.replace(/\/+$/, '')
-  async function request(path, { method = 'GET', body, key, auth = true, signal } = {}) {
+  async function request(path, { method = 'GET', body, key, auth = true, signal, responseMode = 'contract' } = {}) {
+    if (!base) throw new ApiError('Backend mode is not configured. Set VITE_API_BASE_URL or use the offline demo.', { code: 'backend_not_configured' })
     if (!path.startsWith('/') || path.startsWith('//')) throw new Error('Expected a backend-relative API path.')
     const started = performance.now()
     const token = auth ? getToken() : null
@@ -35,6 +36,9 @@ export function createApiClient({ baseUrl = 'http://127.0.0.1:8000', getToken = 
       const response = await fetchImpl(base + path, {
         method, cache: 'no-store', signal: controller.signal,
         headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(new URL(base).hostname.endsWith('.ngrok-free.dev')
+            ? { 'ngrok-skip-browser-warning': '1' }
+            : {}),
           ...(body !== undefined && !multipart ? { 'Content-Type': 'application/json' } : {}), ...(key ? { 'Idempotency-Key': key } : {}) },
         ...(body !== undefined ? { body: multipart ? body : JSON.stringify(body) } : {}),
       })
@@ -52,10 +56,10 @@ export function createApiClient({ baseUrl = 'http://127.0.0.1:8000', getToken = 
           ambiguous: status >= 500,
         })
       }
-      if (status !== 204 && !validResponse(path, responseData)) {
+      if (responseMode !== 'receipt' && (status !== 204 || path.startsWith('/api/')) && !validResponse(path, responseData, method)) {
         throw new ApiError('The backend returned an empty or invalid response.', { status, code: 'invalid_response', ambiguous: method !== 'GET' })
       }
-      return responseData
+      return responseMode === 'receipt' ? { status, data: responseData } : responseData
     } catch (cause) {
       const error = cause instanceof ApiError ? cause : new ApiError(controller.signal.aborted
         ? 'Request timed out or was cancelled. Retry the saved action to safely recover its result.'
@@ -81,6 +85,14 @@ export function createApiClient({ baseUrl = 'http://127.0.0.1:8000', getToken = 
     upload: (file, signal) => { const body = new FormData(); body.append('file', file); return request('/api/documents', { method: 'POST', body, signal }) },
     document: (id, signal) => request(`/api/documents/${encodeURIComponent(id)}`, { signal }),
     createSet: (body, signal) => request('/api/question-sets', { method: 'POST', body, signal }),
+    createStudyPack: (file, { topic = '', practiceCount = 10, signal } = {}) => {
+      const body = new FormData(); body.append('file', file)
+      if (topic.trim()) body.append('topic', topic.trim())
+      body.append('practice_count', String(practiceCount))
+      return request('/api/study-packs', { method: 'POST', body, signal })
+    },
+    studyPack: (id, signal) => request(`/api/study-packs/${encodeURIComponent(id)}`, { signal }),
+    studyPacks: (signal) => request('/api/study-packs', { signal }),
     questionSet: (id, signal) => request(`/api/question-sets/${encodeURIComponent(id)}`, { signal }),
   }
 }

@@ -1,27 +1,21 @@
 import { useState } from 'react'
 import PalaceDialog from './PalaceDialog.jsx'
+import MultipleChoiceAnswer from './MultipleChoiceAnswer.jsx'
 import { isCorrectAnswer } from './memories.js'
 
 export default function RecallQuiz({ memory, unlocked, onUnlock, onClose }) {
-  const [answer, setAnswer] = useState('')
-  const [feedback, setFeedback] = useState('')
-  const submit = (event) => {
-    event.preventDefault()
-    if (isCorrectAnswer(memory, answer)) {
-      setFeedback('Correct! The door is open. Return to the room and walk through the green doorway.')
-      onUnlock()
-    } else {
-      setFeedback(answer.trim() ? 'Not quite. ' + memory.hint + ' Try again.' : 'Type an answer first.')
-    }
-  }
+  const [result, setResult] = useState(null)
+  const [turn, setTurn] = useState(0)
   return <PalaceDialog title={unlocked ? 'A memory unlocked.' : 'Remember to move forward.'} onClose={onClose}>
     <p className="quiz-intro">One question opens this room’s gate. Take your time.</p>
-    <form onSubmit={submit}>
-      <label htmlFor="recall-answer" className="quiz-question">{memory.question}</label>
-      <input id="recall-answer" data-autofocus value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Your answer…" autoComplete="off" disabled={unlocked} aria-describedby="quiz-feedback" />
-      <p id="quiz-feedback" className={'quiz-feedback ' + (unlocked ? 'success' : '')} role="status" aria-live="polite">{feedback || 'Capitalization and surrounding spaces do not matter.'}</p>
-      {!unlocked && <button className="primary full-width" type="submit">Check answer</button>}
-    </form>
+    <h2 className="quiz-question">{memory.question}</h2>
+    <MultipleChoiceAnswer key={`${memory.id}:${turn}`} options={memory.choices} submittedValue={result?.answer} disabled={unlocked} onAnswer={(answer) => {
+      const correct = isCorrectAnswer(memory, answer)
+      setResult({ answer, correct })
+      if (correct) onUnlock()
+    }} />
+    <p className={'quiz-feedback ' + (unlocked ? 'success' : '')} role="status" aria-live="polite">{result ? result.correct ? 'Correct! The door is open. Return to the room and walk through the green doorway.' : `Not quite. ${memory.hint} Try again.` : 'Select one answer, then check it.'}</p>
+    {result && !result.correct && !unlocked && <button data-autofocus className="primary full-width" onClick={() => { setResult(null); setTurn((value) => value + 1) }}>Try this question again</button>}
     <button className={unlocked ? 'primary full-width' : 'secondary full-width'} onClick={onClose}>{unlocked ? 'Return to room & walk through' : 'Close quiz & keep exploring'}</button>
   </PalaceDialog>
 }

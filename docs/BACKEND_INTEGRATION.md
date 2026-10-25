@@ -1,12 +1,31 @@
 # Courtyard and backend integration
 
-Current routing: the default `/` route is now the explicitly offline forest guest prototype. Its rules/lifecycle are documented in `FOREST_GUEST_PROTOTYPE.md`. The account-based courtyard described below is preserved in development at `/?demo=courtyard`; the shared Backend API Tester is also available from the forest's development menu. There is no implemented backend guest contract, and forest prototype XP is never submitted as account progression.
+**Current account-mode implementation:** see [BACKEND_MODE.md](BACKEND_MODE.md). The authoritative contract was freshly fetched and read directly from `origin/main` at `d1a94f136f6a9dd87a9ad3b499e093c59fa8ce03`. Account mode is now available in the default root forest through the PDF landing. It uses authenticated `/api/study-packs` upload/list/poll and backend-authoritative practice/battles/HUD/unlock/completion. `VITE_PDF_UPLOAD_ENDPOINT` is obsolete and unused. The courtyard/manual-set instructions below document the older development route, not the current recommended PDF workflow.
+
+Current routing: `/` offers offline forest guest play or explicitly selected account mode. A selected account mode survives reload within the tab. Guest rules/lifecycle are documented in `FOREST_GUEST_PROTOTYPE.md`. The earlier account-based courtyard is preserved in development at `/?demo=courtyard`; the shared Backend API Tester is also available from the forest's development menu. There is no anonymous backend guest contract, and forest prototype XP is never submitted as account progression.
+
+## PDF landing and authenticated processing
+
+The landing holds a selected PDF in memory. Local continuation sends nothing. Explicit account-mode upload sends authenticated multipart to the verified study-pack endpoint. Set these public configuration values in root `.env.local`, then restart Vite (match the running backend's port):
+
+```dotenv
+VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_PDF_MAX_MB=20
+```
+
+An unset/blank API URL means offline-only. Use an absolute HTTP(S) backend URL without secrets. No proxy was added. Exact backend CORS configuration must match the frontend origin.
+
+`src/api/profilePdf.js: uploadProfilePdf(file, { api })` validates the file and invokes authenticated `POST /api/study-packs` with multipart `file`, optional `topic` and `practice_count`. The browser sets Content-Type/boundary. The coordinator validates the real study-pack response and polls `/api/study-packs/{document_id}` through indexing/writing to ready or failure. `GET /api/study-packs` recovers saved uploads after reload or ambiguous upload failure. No automatic upload retry occurs.
+
+Ready practice/adventure IDs scope the normal gameplay requests. Arbitrary receipt JSON and empty/204 study-pack responses are rejected. Questions are never graded in the frontend. Real PDF-derived questions require HTTP game-master mode; fake mode ignores PDF text.
+
+No PDF bytes enter browser storage or request logs. The selected File lasts only in memory; the server stores uploads and account progress. Local reset and logout do not delete submitted PDFs. No anonymous session, forest collectible/reset/checkpoint or deletion capability is invented. See the current account guide for waiting limits, partial failure, recovery and API limitations.
 
 ## Active frontend and backend source
 
 Run the frontend from the **repository root**: root `package.json` → root `index.html` → `src/main.jsx`. All new integration work is in root `src/`. `frontend/ui/` is the existing packaged snapshot and has not been duplicated or updated with these features. Running Vite from that directory starts the older snapshot.
 
-This frontend branch has **no checked-out `backend/` or `Game_Engine/`**. The implementation was checked against the cached `origin/backend_and_engine` commit `566a60a`, including its routes, schemas, service, `CHEATSHEET.md`, `INTEGRATION_GUIDE.md`, and `contracts/openapi.json`. Backend reference files were extracted under ignored `.qa.local/` for inspection. Use a separate checkout containing both `backend/` and its sibling `Game_Engine/`; do not replace the frontend working tree to start the server. Check the running server's `/docs` if your teammate has changed its contract since that commit.
+This frontend branch has **no checked-out `backend/` or `Game_Engine/`**. The current implementation uses the freshly fetched `origin/main` contract above; the older cached `origin/backend_and_engine` inspection is historical. Use a separate checkout containing backend and its sibling engine to run the service. Do not replace this frontend working tree. Check the running service's `/docs` if its revision differs.
 
 ## Start locally (PowerShell)
 

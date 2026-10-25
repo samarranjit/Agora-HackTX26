@@ -11,10 +11,10 @@ export function createWalkFeel() {
         stride += distance
         if (stride >= 1.8) { stride %= 1.8; step = true }
       } else stride = 0
-      const target = walking ? Math.min(0.025, 0.012 + distance / dt * 0.002) : 0
+      const target = walking ? Math.min(0.055, 0.028 + distance / dt * 0.004) : 0
       amplitude += (target - amplitude) * (1 - Math.exp(-dt * 18))
-      if (!grounded || !active || reducedMotion) return { offsetY: 0, step }
-      return { offsetY: amplitude < 0.00005 ? 0 : Math.sin(phase * 2) * amplitude, step }
+      if (!grounded || !active || reducedMotion) return { offsetY: 0, offsetSide: 0, step }
+      return { offsetY: amplitude < 0.00005 ? 0 : Math.sin(phase * 2) * amplitude, offsetSide: amplitude < 0.00005 ? 0 : Math.sin(phase) * amplitude * 0.28, step }
     },
   }
 }

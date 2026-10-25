@@ -13,6 +13,8 @@ import { createGameSession } from './api/gameSession.js'
 import { AuthForm, Encounter, PlayerStatus, Recovery } from './BackendGame.jsx'
 import StudyMaterials from './StudyMaterials.jsx'
 import ForestJourney from './ForestJourney.jsx'
+import BackendJourney from './BackendJourney.jsx'
+import { API_BASE_URL } from './api/config.js'
 
 const BackendTester = import.meta.env.DEV ? lazy(() => import('./BackendTester.jsx')) : null
 
@@ -23,7 +25,7 @@ function LegacyPalace() {
   const [backend] = useState(() => {
     let storage
     try { storage = window.sessionStorage } catch { /* Use memory when storage is blocked. */ }
-    return createGameSession({ storage, baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000' })
+    return createGameSession({ storage, baseUrl: API_BASE_URL })
   })
   const server = useSyncExternalStore(backend.subscribe, backend.getSnapshot)
   const [notes, setNotes] = useState('')
@@ -34,7 +36,7 @@ function LegacyPalace() {
   const experienceRef = useRef(null)
   const outdoor = environment === 'courtyard'
   const [session, setSession] = useState(0)
-  const closeOverlay = useCallback(() => setOverlay(null), [])
+  const closeOverlay = useCallback(() => { setOverlay(null); experienceRef.current?.enter() }, [])
   const openQuiz = useCallback(() => setOverlay('quiz'), [])
   const pause = useCallback(() => setOverlay((current) => current || 'pause'), [])
   const finish = useCallback(() => setOverlay('complete'), [])
@@ -130,6 +132,13 @@ function LegacyPalace() {
 }
 
 export default function App() {
+  const [mode, setMode] = useState(() => { try { return API_BASE_URL && sessionStorage.getItem('memory-palace.mode') === 'account' ? 'account' : 'offline' } catch { return 'offline' } })
+  const [file, setFile] = useState(null)
+  const changeMode = (next, pdf = null) => {
+    setFile(pdf); setMode(next)
+    try { sessionStorage.setItem('memory-palace.mode', next) } catch { /* Mode remains usable in memory. */ }
+  }
   const demo = new URLSearchParams(window.location.search).get('demo')
-  return import.meta.env.DEV && (demo === 'indoor' || demo === 'courtyard') ? <LegacyPalace /> : <ForestJourney />
+  if (import.meta.env.DEV && (demo === 'indoor' || demo === 'courtyard')) return <LegacyPalace />
+  return mode === 'account' ? <BackendJourney initialFile={file} onOffline={() => changeMode('offline')} /> : <ForestJourney onBackend={(pdf) => changeMode('account', pdf)} />
 }

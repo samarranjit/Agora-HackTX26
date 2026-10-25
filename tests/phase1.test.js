@@ -102,6 +102,9 @@ function createControllerHarness() {
   }
   let pauses = 0
   let interactions = 0
+  let requests = 0
+  const requestPointerLock = canvas.requestPointerLock
+  canvas.requestPointerLock = () => { requests++; return requestPointerLock() }
   const lockStates = []
   const mount = () => createPlayerControls({
     canvas, camera,
@@ -110,7 +113,7 @@ function createControllerHarness() {
     onPause: () => pauses++,
     onLockChange: (locked) => lockStates.push(locked),
   })
-  return { win, doc, canvas, camera, captures, lockStates, mount, get pauses() { return pauses }, get interactions() { return interactions } }
+  return { win, doc, canvas, camera, captures, lockStates, mount, get pauses() { return pauses }, get interactions() { return interactions }, get requests() { return requests } }
 }
 
 test('movement keeps its speed, diagonal normalization and yaw-relative direction', () => {
@@ -160,6 +163,7 @@ test('typing, pausing and resuming cannot leave movement or interaction keys hel
 
 test('drag-look retains pitch bounds and releases pointer capture on pause', () => {
   const h = createControllerHarness()
+  h.canvas.requestPointerLock = () => { throw Error('Pointer lock unavailable') }
   const controls = h.mount()
   controls.setActive(true)
   h.win.emit('pointermove', { movementX: 100, movementY: 100 })
@@ -197,8 +201,8 @@ test('lock release, blur, hidden tabs and rejected pointer lock preserve pause/f
   h.doc.emit('visibilitychange')
   assert.equal(controls.active, false)
   assert.equal(h.pauses, 3)
-  controls.setActive(true)
   h.canvas.requestPointerLock = () => Promise.reject(new Error('denied'))
+  controls.setActive(true)
   controls.lockMouse()
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(controls.active, true)
@@ -207,6 +211,64 @@ test('lock release, blur, hidden tabs and rejected pointer lock preserve pause/f
   h.win.emit('pointermove', { movementX: 100, movementY: 0 })
   assert.ok(h.camera.rotation.y < yaw, 'drag fallback still works')
   controls.dispose()
+})
+
+test('start and intentional resume request lock once, and suspending for UI releases it without moving the camera', () => {
+  const h = createControllerHarness(), controls = h.mount()
+  assert.equal(h.requests, 0)
+  controls.setActive(true)
+  assert.equal(h.doc.pointerLockElement, h.canvas); assert.equal(h.requests, 1)
+  controls.lockMouse(); controls.setActive(true)
+  assert.equal(h.requests, 1, 'an already locked canvas is not requested again')
+  h.win.emit('pointermove', { movementX: 37, movementY: -12 })
+  const position = h.camera.position.clone(), rotation = h.camera.rotation.clone()
+  h.win.emit('keydown', { key: 'w' })
+  controls.suspend(() => assert.equal(h.doc.pointerLockElement, null, 'release precedes opening the menu/question'))
+  assert.equal(h.pauses, 0, 'intentional release must not open a second pause overlay')
+  controls.setActive(true)
+  assert.equal(h.requests, 2); assert.equal(h.doc.pointerLockElement, h.canvas)
+  controls.update(1, {})
+  assert.deepEqual(h.camera.position, position); assert.ok(h.camera.rotation.equals(rotation))
+  h.doc.exitPointerLock()
+  assert.equal(h.pauses, 1); assert.equal(h.requests, 2, 'browser Escape is not fought with a retry loop')
+  controls.setActive(true); assert.equal(h.requests, 3)
+  controls.dispose()
+})
+
+test('pending requests are deduplicated, late modal acquisition releases, and error recovery waits for a click', async () => {
+  const h = createControllerHarness()
+  let finish, requests = 0
+  h.canvas.requestPointerLock = () => { requests++; return new Promise((resolve) => { finish = resolve }) }
+  const controls = h.mount()
+  controls.setActive(true); controls.lockMouse(); controls.lockMouse()
+  assert.equal(requests, 1)
+  controls.setActive(false)
+  h.doc.pointerLockElement = h.canvas; h.doc.emit('pointerlockchange'); finish()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(h.doc.pointerLockElement, null); assert.equal(h.pauses, 0)
+  h.canvas.requestPointerLock = () => { requests++ } // Legacy event-based API.
+  controls.setActive(true); controls.lockMouse(); assert.equal(requests, 2)
+  h.doc.emit('pointerlockerror')
+  assert.equal(controls.active, true); assert.equal(requests, 2)
+  h.canvas.emit('pointerdown', { button: 0, pointerId: 4 })
+  assert.equal(requests, 3)
+  controls.dispose()
+})
+
+test('a new canvas can defer its initial lock through a development remount without locking the discarded canvas', async () => {
+  const h = createControllerHarness()
+  const discarded = h.mount()
+  discarded.setActive(true, { requestLock: false })
+  queueMicrotask(() => discarded.lockMouse())
+  discarded.dispose()
+  const current = h.mount()
+  current.setActive(true, { requestLock: false })
+  queueMicrotask(() => current.lockMouse())
+  assert.equal(h.requests, 0)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(h.requests, 1); assert.equal(h.doc.pointerLockElement, h.canvas)
+  current.dispose()
+  assert.equal(h.win.listenerCount() + h.doc.listenerCount() + h.canvas.listenerCount(), 0)
 })
 
 test('ten control mounts clean up all listeners and disposed controls stop handling input', () => {

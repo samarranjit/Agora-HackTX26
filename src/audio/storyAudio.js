@@ -82,7 +82,7 @@ export function createStoryAudio({ Context = globalThis.AudioContext || globalTh
       lastPlayed.set(kind, now)
       try {
         switch (kind) {
-          case 'footstep': voice(0, 0.085, 0.06); voice(90, 0.07, 0.025); break
+          case 'footstep': voice(0, 0.095, 0.15); voice(90, 0.085, 0.065); break
           case 'approach': voice(1046.5, 0.18, 0.035); break
           case 'interact': voice(523.25, 0.17, 0.07); voice(784, 0.22, 0.045, 0.06); break
           case 'correct': voice(659.25, 0.2, 0.09); voice(987.77, 0.32, 0.07, 0.08); break
@@ -91,6 +91,7 @@ export function createStoryAudio({ Context = globalThis.AudioContext || globalTh
           case 'collect': [523.25, 659.25, 784, 1046.5].forEach((f, i) => voice(f, 0.48, 0.065, i * 0.07)); break
           case 'bridge': voice(55, 1.9, 0.07, 0, 'triangle', 41.2); voice(82.4, 1.6, 0.045, 0.1, 'sine', 55); break
           case 'dragon': voice(146.8, 0.7, 0.08, 0, 'triangle', 65.4); voice(98, 0.8, 0.045, 0.1); break
+          case 'wolf': voice(196, 0.6, 0.07, 0, 'sine', 294); voice(146.8, 0.45, 0.03, 0.15); break
           case 'victory': [392, 523.25, 659.25, 784].forEach((f, i) => voice(f, 0.75, 0.07, i * 0.1)); break
           default: return false
         }

@@ -77,3 +77,36 @@ export function createStoryDragon() {
   for (let i = 0; i < 4; i++) put('cone', 'gold', [0, 2.8 - i * 0.2, -0.2 - i * 0.48], [0.2, 0.55, 0.2])
   return { root, update(time, won = false) { head.rotation.y = Math.sin(time * 0.6) * 0.12; head.position.y = 3 + Math.sin(time * 1.5) * 0.05; wings.forEach((w, i) => { w.rotation.z = Math.sin(time * 0.8) * 0.08 * (i ? 1 : -1) }); tail.rotation.y = Math.sin(time) * 0.12; root.rotation.x = won ? -0.08 : 0 } }
 }
+
+export function createBigBadWolf() {
+  const root = new THREE.Group(); root.name = 'Big Bad Wolf'
+  const put = sculptor(root, { fur: 0x737f91, light: 0xb5bac4, dark: 0x313549, eye: 0xf4cd79, teeth: 0xffedcf, red: 0x963f58 })
+  put('orb', 'fur', [0, 1, 0], [0.64, 0.66, 1.15])
+  const head = new THREE.Group(); head.position.set(0, 1.65, 0.85); root.add(head)
+  put('orb', 'fur', [0, 0, 0], [0.6, 0.55, 0.55], [0, 0, 0], head)
+  put('orb', 'light', [0, -0.16, 0.55], [0.33, 0.25, 0.6], [0, 0, 0], head)
+  put('orb', 'dark', [0, -0.08, 1.03], [0.2, 0.16, 0.16], [0, 0, 0], head)
+  for (const side of [-1, 1]) {
+    put('cone', 'fur', [side * 0.4, 0.6, -0.1], [0.24, 0.8, 0.2], [0, 0, -side * 0.2], head)
+    put('orb', 'eye', [side * 0.36, 0.12, 0.38], [0.13, 0.15, 0.08], [0, 0, 0], head)
+    put('orb', 'dark', [side * 0.35, 0.12, 0.45], [0.045, 0.09, 0.03], [0, 0, 0], head)
+    put('cone', 'teeth', [side * 0.21, -0.36, 0.7], [0.07, 0.23, 0.07], [Math.PI, 0, 0], head)
+    for (const z of [-0.65, 0.65]) { put('cylinder', 'fur', [side * 0.43, 0.42, z], [0.15, 0.8, 0.15]); put('orb', 'dark', [side * 0.43, 0.14, z + 0.14], [0.2, 0.13, 0.34]) }
+  }
+  put('cone', 'fur', [0, 1.05, -1.55], [0.3, 1.6, 0.3], [-1.1, 0, 0])
+  put('ring', 'red', [0, 1.4, 0.63], [0.5, 0.5, 0.4], [Math.PI / 2.5, 0, 0])
+  return { root, update(time) { head.rotation.y = Math.sin(time * 0.75) * 0.1; head.position.y = 1.65 + Math.sin(time * 1.8) * 0.04 } }
+}
+
+export function createStoryPrincess() {
+  const root = new THREE.Group(); root.name = 'Storywood Princess'
+  const put = sculptor(root, { gown: 0xe2a1ca, trim: 0xffe4bd, skin: 0xf3cfb1, hair: 0x8b533f, gold: 0xf3ca70, eye: 0x3c3249 })
+  put('cone', 'gown', [0, 0.75, 0], [0.75, 1.5, 0.75])
+  put('orb', 'trim', [0, 1.35, 0.05], [0.35, 0.5, 0.3])
+  put('orb', 'hair', [0, 2, -0.08], [0.43, 0.5, 0.35])
+  put('orb', 'skin', [0, 2.02, 0.12], [0.32, 0.36, 0.25])
+  for (const side of [-1, 1]) { put('orb', 'gown', [side * 0.4, 1.5, 0], [0.23, 0.22, 0.23]); put('cylinder', 'skin', [side * 0.49, 1.17, 0.07], [0.09, 0.5, 0.09], [0, 0, side * 0.14]); put('orb', 'eye', [side * 0.12, 2.05, 0.35], [0.035, 0.045, 0.025]) }
+  put('cylinder', 'gold', [0, 2.37, 0], [0.36, 0.15, 0.36])
+  for (let i = 0; i < 5; i++) { const angle = i * Math.PI * 2 / 5; put('cone', 'gold', [Math.sin(angle) * 0.29, 2.56, Math.cos(angle) * 0.29], [0.09, 0.35, 0.09]) }
+  return root
+}

@@ -103,15 +103,15 @@ test('terrain follows grounded uphill motion; closed gate and bridge sides canno
   const motion = createPlayerMotion(world)
   for (let i = 0; i < 180; i++) motion.update(1 / 60, { x: 0, z: 1 }, 0)
   assert.ok(motion.position.y > FOREST_SPAWN.y)
-  assert.ok(Math.abs(motion.position.y - forestHeight(motion.position.x, motion.position.z)) < 1e-8)
+  assert.ok(Math.abs(motion.position.y - world.groundHeight(motion.position.x, motion.position.z)) < 1e-8)
   const blocked = world.move({ x: 0, z: -20 }, { x: 0, z: -34 })
   assert.ok(blocked.z >= -21.6)
   world.setBridgeOpen(true)
   assert.ok(world.move({ x: 0, z: -20 }, { x: 0, z: -34 }).z < -33)
   assert.ok(world.move({ x: 6, z: -20 }, { x: 6, z: -34 }).z > -22)
   assert.ok(world.move({ x: 0, z: -26 }, { x: 10, z: -26 }).x < 2.5)
-  const run = createForestRun(), item = FOREST_COLLECTIBLES[0]
-  assert.equal(nearbyForestTarget({ x: item.x, y: forestHeight(item.x, item.z) + 1.6, z: item.z }, run), item.id)
+  const run = createForestRun(), item = run.layout.collectibles[0]
+  assert.equal(nearbyForestTarget({ x: item.x, y: forestHeight(item.x, item.z, run.layout) + 1.6, z: item.z }, run), item.id)
   assert.equal(nearbyForestTarget({ x: item.x, y: 40, z: item.z }, run), null)
 })
 

@@ -16,6 +16,7 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
   let dragging = false
   let capturedPointerId = null
   let disposed = false
+  let lockRequest = null
 
   const clearKeys = () => {
     Object.keys(keys).forEach((key) => { keys[key] = false })
@@ -28,12 +29,16 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
     }
     capturedPointerId = null
   }
-  const setActive = (nextActive) => {
+  const setActive = (nextActive, { requestLock = true } = {}) => {
     if (disposed) return
+    const wasActive = active
     active = nextActive
     clearKeys()
     releaseDrag()
-    if (active) canvas.focus()
+    if (active) {
+      canvas.focus()
+      if (!wasActive && requestLock) lockMouse()
+    }
     else if (doc.pointerLockElement === canvas) doc.exitPointerLock()
   }
   const suspend = (callback) => {
@@ -72,18 +77,26 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
       dragging = true
       canvas.setPointerCapture(event.pointerId)
       capturedPointerId = event.pointerId
+      lockMouse() // One recovery attempt for this click; dragging remains the fallback.
     }
   }
   const onPointerUp = () => releaseDrag()
   const onPointerLockChange = () => {
     const wasLocked = locked
     locked = doc.pointerLockElement === canvas
+    lockRequest = null
+    if (locked && (!active || disposed)) { doc.exitPointerLock(); return }
+    if (locked) releaseDrag()
     onLockChange(locked)
     if (!locked) {
       releaseDrag()
       clearKeys()
       if (wasLocked && active) suspend(onPause)
     }
+  }
+  const onPointerLockError = () => {
+    lockRequest = null
+    if (!disposed && doc.pointerLockElement !== canvas) { locked = false; onLockChange(false) }
   }
   const listeners = [
     [win, 'keydown', onKeyDown],
@@ -92,6 +105,7 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
     [win, 'blur', onBlur],
     [doc, 'visibilitychange', onVisibility],
     [doc, 'pointerlockchange', onPointerLockChange],
+    [doc, 'pointerlockerror', onPointerLockError],
     [canvas, 'pointerdown', onPointerDown],
     [canvas, 'pointerup', onPointerUp],
     [canvas, 'pointercancel', onPointerUp],
@@ -99,16 +113,19 @@ export function createPlayerControls({ canvas, camera, constrainMovement, motion
   listeners.forEach(([target, type, handler]) => target.addEventListener(type, handler))
 
   const lockMouse = () => {
-    if (disposed || !active) return
+    if (disposed || !active || doc.pointerLockElement === canvas || lockRequest) return
     canvas.focus()
+    const attempt = {}
+    lockRequest = attempt
     const failed = () => {
-      if (disposed) return
-      locked = false
-      onLockChange(false)
+      if (disposed || lockRequest !== attempt) return
+      onPointerLockError()
     }
     try {
-      const request = canvas.requestPointerLock?.()
+      if (!canvas.requestPointerLock) { failed(); return }
+      const request = canvas.requestPointerLock()
       request?.then(() => {
+        if (lockRequest === attempt) lockRequest = null
         // A request may finish after a modal opened or this canvas unmounted.
         if ((disposed || !active) && doc.pointerLockElement === canvas) doc.exitPointerLock()
       }).catch(failed)

@@ -11,7 +11,7 @@ test('walk feel follows actual distance, settles without drift, and disables bob
   const feel = createWalkFeel()
   let steps = 0, maximum = 0
   for (let i = 0; i < 180; i++) { const next = feel.update(1 / 60, 4.2 / 60); maximum = Math.max(maximum, Math.abs(next.offsetY)); steps += Number(next.step) }
-  assert.ok(maximum > 0.005 && maximum <= 0.025)
+  assert.ok(maximum > 0.035 && maximum <= 0.055)
   assert.ok(steps >= 6 && steps <= 8)
   let resting
   for (let i = 0; i < 120; i++) resting = feel.update(1 / 60, 0)
