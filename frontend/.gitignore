@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+dist/
+dist-ssr/
+
+# Local configuration, secrets, and validation artifacts
+.env
+.env.*
+!.env.example
+*.local
+.qa.local/
+output/
+
+# Logs and editor files
+logs/
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
