@@ -1,0 +1,18 @@
+.storywood { background: #273d3e; }
+.storywood .adventure-overlay { background: linear-gradient(90deg, #142d30f2, #1d3338b5 40%, #1d333824 76%, transparent); }
+.storywood .adventure-card:not(.backend-card) { width: min(435px, 100%); }
+.storywood .backend-card { background: #1e3032f5; border-color: #d2c18d66; }
+.storywood .backend-card h1 { font-size: 32px; }
+.storywood .adventure-objective { background: #19383cdd; }
+.storywood .backend-hud { background: #19383ce8; top: 174px; max-width: 325px; }
+.storywood .adventure-vitals { background: #19383ce8; }
+.storywood .forest-interaction { background: #19383cf2; border-color: #d4c18a99; }
+.forest-question-count { color: #e8ce95; margin: 0 0 20px; font-size: 13px; }
+.forest-reward { padding: 8px 0; }
+.forest-reward > span { font-size: 38px; color: #e8ce95; }
+.forest-journal { list-style: none; padding: 0; }
+.forest-journal li { padding: 10px 0; border-bottom: 1px solid #d4c18a33; }
+.forest-journal li p { font-size: 12px; color: #cbd4c6; margin-top: 4px; }
+.forest-milestones { color: #e8d9ba; font-size: 13px; line-height: 1.8; }
+.storywood .backend-card p + p { margin-top: 10px; }
+@media (max-height: 650px) { .storywood .adventure-card:not(.backend-card) h1 { font-size: 39px; } .storywood .adventure-rule { margin: 12px 0; } }

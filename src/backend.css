@@ -1,0 +1,25 @@
+.backend-status { display: grid; gap: 6px; padding: 12px; background: #221e35; border: 1px solid #bd9a6466; border-radius: 10px; margin: 12px 0; font-size: 14px; }
+.backend-status span, .backend-status small { color: #ded0bd; }
+.api-error { margin: 14px 0; padding: 12px; border: 1px solid #efae9a; border-radius: 9px; background: #542c36; color: #ffe5dc; overflow-wrap: anywhere; }
+.api-error small { display: block; margin-top: 6px; }
+.palace-card fieldset { min-width: 0; border: 1px solid #bca57c55; border-radius: 9px; padding: 12px; margin: 16px 0; }
+.palace-card legend { font-size: 13px; color: #e8c07a; padding: 0 5px; }
+.palace-card label { margin-top: 12px; }
+.answer-option { display: flex; gap: 12px; align-items: center; background: #363044; padding: 12px; border-radius: 8px; }
+.answer-option input { width: auto; accent-color: #e8c07a; }
+.api-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.api-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.palace-card button:disabled { opacity: .5; cursor: wait; }
+.palace-card details { margin: 14px 0; }
+.palace-card summary { cursor: pointer; color: #f0d5a8; font-size: 13px; overflow-wrap: anywhere; }
+.api-log pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; color: #ecdfd3; max-height: 330px; overflow-y: auto; padding: 10px; background: #15111c; }
+.api-id { font-family: monospace; overflow-wrap: anywhere; user-select: all; }
+.backend-hud { position: absolute; top: 174px; left: 32px; max-width: 320px; background: #252134eb; border: 1px solid #bd9a6466; padding: 12px; border-radius: 9px; font-size: 12px; }
+.backend-hud span { display: block; margin-top: 5px; }
+.backend-menu-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+@media (max-height: 650px) { .backend-hud { max-width: 280px; padding: 8px; } }
+@media (max-width: 600px) { .backend-hud { top: 160px; left: 16px; } }
+.backend-overlay { padding: 90px 5vw 24px; }
+.palace-card.backend-card { width: min(620px, 100%); padding: 24px; background: #211d30f5; border: 1px solid #bd9a6466; border-radius: 14px; overflow-wrap: anywhere; scrollbar-gutter: stable; }
+.backend-card h1 { font-size: 32px; max-width: none; }
+.backend-card .palace-kicker { margin-bottom: 10px; }

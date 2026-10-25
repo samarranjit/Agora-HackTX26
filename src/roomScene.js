@@ -1,13 +1,10 @@
 import * as THREE from 'three'
 import { createMemoryObject } from './memoryObjects.js'
+import { disposeScene } from './sceneResources.js'
 
 export const ROOM_SIZE = 12
 const WALL_HEIGHT = 3.5
-export const EYE_HEIGHT = 1.6
 const PLAYER_RADIUS = 0.35
-export const MOVE_SPEED = 4.2
-export const LOOK_SPEED = 0.0022
-export const PITCH_LIMIT = Math.PI / 2 - 0.08
 
 export const PEDESTALS = [
   { x: -3.2, z: -3.4, radius: 0.38 },
@@ -233,7 +230,28 @@ export function createRoomScene(memories) {
   doorLight.position.set(0, 2.2, half - 1.2)
   scene.add(doorLight)
 
-  return { scene, objects, door, doorPivot, doorLight }
+  let elapsed = 0
+  let disposed = false
+  const update = (dt, { unlocked }) => {
+    if (disposed) return
+    elapsed += dt
+    objects.forEach((object, i) => {
+      object.rotation.y = Math.sin(elapsed * 0.6 + i) * 0.35
+      object.position.y = 1.4 + Math.sin(elapsed * 2 + i) * 0.045
+    })
+    doorPivot.rotation.y = THREE.MathUtils.damp(doorPivot.rotation.y, unlocked ? -Math.PI / 2 : 0, 5, dt)
+    door.material.color.setHex(unlocked ? 0x3bde95 : 0x7a3e22)
+    door.material.emissive.setHex(unlocked ? 0x124d30 : 0x000000)
+    doorLight.color.setHex(unlocked ? 0x68ffb2 : 0xfff3d0)
+  }
+  const dispose = () => {
+    if (disposed) return
+    disposed = true
+    disposeScene(scene)
+  }
+
+  // The existing builder doubles as the scene handle; no separate adapter is needed.
+  return { scene, objects, door, doorPivot, doorLight, collide, update, dispose }
 }
 
 export function collide(x, z, unlocked = false, previousZ = 0) {
