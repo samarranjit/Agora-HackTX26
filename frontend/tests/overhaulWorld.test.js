@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createEncounterTrigger } from '../src/game/encounterTrigger.js'
 import { createForestView } from '../src/game/forestView.js'
 import { backendWorldView } from '../src/game/backendWorld.js'
-import { createHallWorld, CASTLE_APPROACH, FOREST_GUARDIAN_BODY, HALL, HALL_FLOOR, HALL_QUESTION_RADIUS, hallEncounterAt, hallGround, hallHeight, forestEncounterAt, forestEncounterRange, forestGuardianAnchor, forestGuardianApproachable, forestHeight, nearbyHallTarget, pathX, speechAnchorFromProjected, usesCharacterSpeech } from '../src/forestLayout.js'
+import { createHallWorld, CASTLE_APPROACH, CASTLE_EYE_HEIGHT, FOREST_GUARDIAN_BODY, HALL, HALL_FLOOR, HALL_QUESTION_RADIUS, hallEncounterAt, hallGround, hallHeight, forestEncounterAt, forestEncounterRange, forestGuardianAnchor, forestGuardianApproachable, forestHeight, nearbyHallTarget, pathX, speechAnchorFromProjected, usesCharacterSpeech } from '../src/forestLayout.js'
 import { createCastleHallScene, createForestScene } from '../src/forestScene.js'
 import { createPlayerMotion, WALK_SPEED } from '../src/playerMotion.js'
 import { EYE_HEIGHT } from '../src/playerControls.js'
@@ -160,6 +160,8 @@ test('palace floor and walk speed match the forest approach', () => {
   let lowest=Infinity
   for (let i=0;i<paving.geometry.attributes.position.count;i++) lowest=Math.min(lowest, paving.geometry.attributes.position.getY(i))
   assert.ok(Math.abs(lowest - HALL_FLOOR) < 0.02)
+  assert.equal(CASTLE_EYE_HEIGHT, HALL_FLOOR / 3)
+  assert.equal(room.spawn.y + CASTLE_EYE_HEIGHT, HALL_FLOOR + HALL_FLOOR / 3)
   assert.equal(room.spawn.y + EYE_HEIGHT, HALL_FLOOR + EYE_HEIGHT)
   room.dispose()
 })

@@ -21,6 +21,8 @@ export function forestEncounterRange(position, spot, layout, radius = FOREST_ENC
 }
 export const CASTLE_APPROACH = Object.freeze({ x: 0, y: 8, z: -31.4, yaw: Math.PI })
 export const HALL_FLOOR = CASTLE_APPROACH.y
+// Two thirds lower than standing a full floor-height above the paving.
+export const CASTLE_EYE_HEIGHT = HALL_FLOOR / 3
 export const FOREST_GUARDIAN_BODY = Object.freeze({
   goblin: Object.freeze({ radius: 1.2 }),
   wolf: Object.freeze({ radius: 1.2, length: 2.2 }),
@@ -191,7 +193,7 @@ export function createHallWorld() {
         if (Math.abs(Math.abs(x) - 40) < 1 && (z < 5 || z > 15)) return true
         if (Math.abs(z + 76) < 1 && Math.abs(x) > 9) return true
         if (!dragonDefeated && Math.abs(z - HALL.prison.gateZ) < 0.9) return true
-        return [-25, 25].some((cx) => HALL.pillars.some((cz) => Math.hypot(x - cx, z - cz) < 2.66)) || (!dragonGone && guardianBlocks(x, z, { x: HALL.dragon.x, z: HALL.dragon.z, radius: HALL.dragon.radius, length: HALL.dragon.length })) || Math.hypot(x - princessAt.x, z - princessAt.z) < 1.2
+        return [-25, 25].some((cx) => HALL.pillars.some((cz) => Math.hypot(x - cx, z - cz) < 2.66)) || (!dragonGone && guardianBlocks(x, z, { x: HALL.dragon.x, z: HALL.dragon.z, radius: HALL.dragon.radius, length: HALL.dragon.length })) || Math.hypot(x - princessAt.x, z - princessAt.z) < 1.9
       }
       const steps = Math.max(1, Math.ceil(Math.hypot(target.x - from.x, target.z - from.z) / 0.1))
       const dx = (target.x - from.x) / steps, dz = (target.z - from.z) / steps

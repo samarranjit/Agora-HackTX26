@@ -5,7 +5,7 @@ import { createPlayerMotion } from './playerMotion.js'
 import { createSwordProp } from './swordProp.js'
 import AdventureHud from './AdventureHud.jsx'
 import { createForestScene, createCastleHallScene } from './forestScene.js'
-import { nearbyForestTarget, nearbyHallTarget, forestEncounterAt, hallEncounterAt, forestGuardianAnchor, forestGuardianApproachable, speechAnchorFromProjected } from './forestLayout.js'
+import { nearbyForestTarget, nearbyHallTarget, forestEncounterAt, hallEncounterAt, forestGuardianAnchor, forestGuardianApproachable, speechAnchorFromProjected, CASTLE_EYE_HEIGHT } from './forestLayout.js'
 import { getForestTarget } from './game/forestContent.js'
 import { createWalkFeel } from './walkFeel.js'
 import { createEncounterTrigger } from './game/encounterTrigger.js'
@@ -38,7 +38,8 @@ export default function RoomExperience({ active, playing, session, onPause, back
     const room = forest ? createForestScene({ spawnId: propsRef.current.forestRun?.spawnId, layout: propsRef.current.forestRun?.layout }) : createCastleHallScene()
     const camera = new THREE.PerspectiveCamera(70, mount.clientWidth / mount.clientHeight, 0.08, adventuring ? 220 : 50)
     camera.rotation.order = 'YXZ'
-    camera.position.set(room.spawn?.x ?? 0, (room.spawn?.y ?? 0) + EYE_HEIGHT, room.spawn?.z ?? 3.6)
+    const eyeHeight = hall ? CASTLE_EYE_HEIGHT : EYE_HEIGHT
+    camera.position.set(room.spawn?.x ?? 0, (room.spawn?.y ?? 0) + eyeHeight, room.spawn?.z ?? 3.6)
     camera.rotation.y = room.spawn?.yaw ?? 0
     if (adventuring) camera.rotation.x = 0.06
     const motion = adventuring ? createPlayerMotion(room.world) : null
@@ -82,6 +83,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
       camera,
       constrainMovement: room.collide,
       motion,
+      eyeHeight,
       onRespawn: () => {
         setRespawned(true)
         clearTimeout(noticeTimer)
@@ -121,7 +123,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
       bobOffset = 0; swayX = 0; swayZ = 0
       const beforeX = camera.position.x, beforeZ = camera.position.z
       const feet = motion?.position
-      room.update(dt, { ...propsRef.current, playerPosition: feet ? { x: feet.x, y: feet.y + EYE_HEIGHT, z: feet.z } : physicalPosition(), reducedMotion, onGuardianAppear: (id) => soundRef?.current?.play(id) })
+      room.update(dt, { ...propsRef.current, playerPosition: feet ? { x: feet.x, y: feet.y + eyeHeight, z: feet.z } : physicalPosition(), reducedMotion, onGuardianAppear: (id) => soundRef?.current?.play(id) })
       controls.update(dt, propsRef.current)
       if (adventuring && controls.active) {
         const nextNearby = forestTarget()
