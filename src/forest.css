@@ -1,0 +1,65 @@
+.storywood { background: #273d3e; }
+.storywood .adventure-overlay { background: linear-gradient(90deg, #142d30f2, #1d3338b5 40%, #1d333824 76%, transparent); }
+.storywood .adventure-card:not(.backend-card) { width: min(435px, 100%); }
+.storywood .backend-card { background: #1e3032f5; border-color: #d2c18d66; }
+.storywood .backend-card h1 { font-size: 32px; }
+.storywood .adventure-objective { background: #19383cdd; }
+.storywood .backend-hud { background: #19383ce8; top: 174px; max-width: 325px; }
+.storywood .adventure-vitals { background: #19383ce8; }
+.storywood .forest-interaction { background: #19383cf2; border-color: #d4c18a99; }
+.forest-question-count { color: #e8ce95; margin: 0 0 20px; font-size: 13px; }
+.forest-reward { padding: 8px 0; }
+.forest-reward > span { font-size: 38px; color: #e8ce95; }
+.forest-journal { list-style: none; padding: 0; }
+.forest-journal li { padding: 10px 0; border-bottom: 1px solid #d4c18a33; }
+.forest-journal li p { font-size: 12px; color: #cbd4c6; margin-top: 4px; }
+.forest-milestones { color: #e8d9ba; font-size: 13px; line-height: 1.8; }
+.storywood .backend-card p + p { margin-top: 10px; }
+@media (max-height: 650px) { .storywood .adventure-card:not(.backend-card) h1 { font-size: 39px; } .storywood .adventure-rule { margin: 12px 0; } }
+
+.forest-topbar-actions, .dialog-tools { display: flex; align-items: center; gap: 10px; }
+.storywood .palace-topbar[inert] .forest-topbar-actions { visibility: hidden; }
+.storywood .sound-control { white-space: nowrap; color: #e8d9ba; background: #203a3de8; border: 1px solid #d4c18a55; font-size: 11px; padding: 8px 11px; }
+.storywood .sound-control span { font-size: 14px; letter-spacing: 0; color: #e8ce95; }
+.storywood .dialog-tools { flex-shrink: 0; margin-bottom: 10px; }
+.storywood .dialog-tools .close-button { margin: 0; }
+.storywood .dialog-heading > .palace-kicker { min-width: 0; }
+.storywood .palace-overlay { animation: story-overlay-in 160ms ease-out both; }
+.storywood .backend-card { animation: story-card-in 180ms ease-out both; }
+.storywood .forest-interaction { animation: story-prompt-in 200ms ease-out both; }
+.forest-answer-feedback { padding: 12px; border-radius: 9px; border: 1px solid transparent; }
+.answer-correct { border-color: #9fdbc477; background: #91c5a50c; animation: story-correct 350ms ease-out; }
+.answer-incorrect { border-color: #e5b29a77; background: #d798890b; animation: story-mistake 280ms ease-out; }
+.storywood .heart-loss { animation: story-heart-loss 350ms ease-out; }
+.forest-inline-hearts { display: inline-block; }
+.forest-progress-gain { display: block; transform-origin: left center; animation: story-progress 400ms ease-out; }
+.forest-collecting { color: #f1d599; }
+.forest-reward { animation: story-card-in 260ms ease-out both; }
+.forest-reward > span { display: inline-block; animation: story-reward 550ms ease-out both; }
+.dragon-victory { border-top: 1px solid #e8ce9577; background: radial-gradient(ellipse at top, #ecd19a12, transparent 75%); }
+.forest-scene-transition { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: #25263b; animation: story-arrival 650ms ease-out both; }
+@keyframes story-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes story-card-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes story-prompt-in { from { opacity: 0; transform: translate(-50%, 5px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes story-correct { from { box-shadow: 0 0 0 2px #9fdbc44d; } to { box-shadow: 0 0 0 0 #9fdbc400; } }
+@keyframes story-mistake { from { border-color: #f0baa4; } to { border-color: #e5b29a77; } }
+@keyframes story-heart-loss { 35% { transform: scale(.92); opacity: .7; } to { transform: scale(1); opacity: 1; } }
+@keyframes story-progress { 35% { transform: scale(1.035); color: #ffe4a8; } to { transform: scale(1); } }
+@keyframes story-reward { from { transform: scale(.85) rotate(-12deg); opacity: .5; } to { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes story-arrival { from { opacity: .75; } to { opacity: 0; } }
+@media (max-width: 600px) { .storywood .sound-control { padding: 7px 8px; font-size: 10px; } .forest-topbar-actions, .dialog-tools { gap: 6px; } .storywood .palace-brand strong { font-size: 18px; } .storywood .palace-brand .brand-crest { display: none; } }
+@media (prefers-reduced-motion: reduce) { .storywood *, .storywood *::before, .storywood *::after { animation: none !important; transition: none !important; } .forest-scene-transition { display: none; } }
+
+.pdf-intro { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; color: #dbe1d2; }
+.pdf-crest { display: grid; place-items: center; flex-shrink: 0; width: 62px; height: 70px; color: #edcf94; font-size: 42px; border: 1px solid #cdb78677; border-radius: 18px 18px 28px 28px; background: #cdb7860a; }
+.pdf-file-input { display: none; }
+.pdf-dropzone { display: grid; place-items: center; gap: 10px; width: 100%; min-height: 165px; padding: 24px; border: 1px dashed #d7c390aa; color: #f5e7c9; background: linear-gradient(135deg, #2b4a49, #263c40); }
+.pdf-dropzone > span { font-size: 32px; color: #edcf94; }
+.pdf-dropzone small { color: #c7d3c6; font-weight: 400; }
+.pdf-dropzone.is-dragging { border-style: solid; background: #385650; }
+.pdf-selection { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 0; border-bottom: 1px solid #d7c39044; }
+.pdf-selection > div { min-width: 0; }
+.pdf-selection strong, .pdf-selection span { display: block; overflow-wrap: anywhere; }
+.pdf-selection span { color: #c7d3c6; font-size: 11px; margin-top: 5px; }
+.pdf-selection button { flex-shrink: 0; }
+.pdf-connection { margin-top: 16px; color: #d1dacb; font-size: 12px; line-height: 1.6; }
