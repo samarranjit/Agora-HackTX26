@@ -1,4 +1,4 @@
-# Memory Palace
+# Agora
 
 - Persistent project preference: keep all frontend code, dependency manifests/lockfiles, Vite/lint configuration, HTML entry points, assets, tests, documentation, and local environment files inside `frontend/`. Do not recreate frontend tooling in the repository root.
 - The active application is `frontend/src/`, with `frontend/index.html` and `frontend/package.json`. `frontend/ui/` is a legacy app; do not make new frontend changes there unless explicitly requested.

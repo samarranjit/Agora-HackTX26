@@ -1,49 +1,78 @@
-# Memory Palace
+# Agora — Frontend
 
-A Vite + React + Three.js fantasy PDF learning adventure. The only player journey is:
+Vite + React + Three.js client for Agora. It presents the Storywood and the castle. It never invents questions, XP, health, or victories.
 
-**Open → Sign In / Create Account → Select a saved study set or upload a PDF → Processing when needed → Forest adventure.**
+**Sign in → choose or upload a PDF → walk the forest.**
 
-Sign In is always first, including reload and old query-string routes. Create account switches forms and uses the real registration/login API. Successful authentication opens study-set selection; choosing/dropping a new PDF uploads automatically. A ready question set and verified player state enter the preserved forest without another confirmation.
+`ui/` is a legacy prototype. Run everything from this folder, not `ui/`.
 
-All questions, grading, XP, health, guardian battles and castle unlocks use the configured backend. No guest/offline/sample mode, API tester, request history or alternate entry UI exists. Credentials and in-visit retries stay in memory, never browser storage.
-
-This folder is the active, self-contained frontend. Source is in `src/`, static assets in `public/`, and Vite starts at `index.html`, which loads `src/main.jsx`. Vite reads configuration and environment files from this folder and builds into `dist/`. The older `ui/` folder is a legacy app; run commands here, outside `ui/`.
-
-Install Node.js 24 with npm on the new device. The minimum supported Node version is 22.12.0; `.nvmrc` selects 24 when using nvm. No globally installed Vite or parent repository is required.
-
-Clone your frontend-only GitHub repository, then open a terminal in its root (the folder containing `package.json`). If you cloned the full project instead, first run `cd frontend`. Install dependencies on that device:
+## Run
 
 ```sh
 npm ci
-```
-
-Create `.env.local` from `.env.example` once. In PowerShell:
-
-```powershell
-Copy-Item .env.example .env.local
-```
-
-On macOS or Linux:
-
-```sh
-cp .env.example .env.local
-```
-
-Skip the copy step if `.env.local` already exists. Edit `VITE_API_BASE_URL` in that file to point at your running backend, then start the frontend:
-
-```sh
+cp .env.example .env.local    # set VITE_API_BASE_URL
 npm run dev
 ```
 
-Open the local URL printed by Vite. On Windows, use `npm.cmd` instead of `npm` if PowerShell blocks npm's script. `VITE_PDF_MAX_MB` defaults to 20. Local environment files are ignored by Git. The existing ngrok bypass header remains in the API client.
+Node ≥ 22.12. The backend must be up and must allow this origin in CORS.
 
-The frontend starts and builds on its own, but signing in, uploading PDFs, and playing require the backend service. On another device, `127.0.0.1` refers to that new device: use it only if the backend also runs there. Otherwise configure a reachable backend URL and allow the frontend's exact origin in backend CORS. Restart Vite after editing `.env.local`; production builds embed the public `VITE_*` settings at build time, so rebuild after changing them.
+Vite reads only a file named exactly `.env.local` (a misspelling such as `.env.lcoal` is ignored, and the app then makes no backend requests). Restart `npm run dev` after editing it. `VITE_API_BASE_URL` must be a URL the browser can reach. For `*.ngrok-free.dev` the client adds `ngrok-skip-browser-warning`, which the backend allows in CORS. Open the app on `localhost` or `127.0.0.1` (ports 5173–5180, 3000 or 4173): the backend allows exact origins only.
 
-You can also run `npm --prefix frontend run dev` from the full repository root. When publishing only this folder, include its dotfiles (`.gitignore`, `.nvmrc`, `.oxlintrc.json`, and `.env.example`), manifests, configuration, HTML entry, source, assets, tests, and docs. Install with `npm ci` after cloning; `node_modules/`, `dist/`, and `.env.local` are intentionally excluded. The active app lives directly in this folder; the older `ui/` app is not needed to run it.
+```sh
+npm test
+npm run lint
+npm run build
+```
 
-The backend must be online and allow the frontend's exact CORS origin. Current server rules and limitations are described in [BACKEND_MODE.md](docs/BACKEND_MODE.md). Live validation is distinguished from intercepted tests in [LINEAR_FLOW_VALIDATION.md](docs/LINEAR_FLOW_VALIDATION.md).
+## Layout
 
-Checks, from this folder: `npm test`, `npm run lint`, `npm run build`. Lint targets the active `src/` and `tests/` directories. `npm run preview` serves the production build. Older validation documents may refer to the previous root layout; resolve their frontend paths relative to this folder.
+```text
+frontend/
+├── index.html              entry; document title Agora
+├── package.json            scripts: dev, test, lint, build
+├── src/
+│   ├── main.jsx            React mount
+│   ├── App.jsx             renders ForestJourney
+│   ├── ForestJourney.jsx   session, overlays, study flow
+│   ├── BackendGame.jsx     sign-in, encounter, recovery
+│   ├── PdfLanding.jsx      study-set library and upload
+│   ├── RoomExperience.jsx  Three.js loop and input
+│   ├── PalaceDialog.jsx    modal shell
+│   ├── CharacterSpeech.jsx guardian dialogue
+│   ├── AdventureHud.jsx    objective and notices
+│   ├── playerControls.js   pointer lock, look, movement
+│   ├── playerMotion.js     walk, jump, sprint
+│   ├── forestLayout.js     world spots, collision, hall
+│   ├── forestScene.js      forest and castle scenes
+│   ├── forestContent.js    relic and guardian identities
+│   ├── storybookProps.js   wolf, goblin, re-exports
+│   ├── dragonModel.js      Storykeeper Dragon
+│   ├── princessModel.js    princess
+│   ├── modelKit.js         shared mesh helpers
+│   ├── api/                HTTP client, session, validation
+│   ├── game/               server world projection
+│   └── audio/              story sounds
+├── tests/                  node:test
+├── docs/                   planning notes
+└── ui/                     unused legacy app
+```
 
-The parent repository also contains the backend (`../backend/`), game engine (`../Game_Engine/`), question-generation service (`../ai_module/`), and a standalone Phaser minimap (`../minimap/`). They are separate projects. The frontend calls the configured backend over HTTP and does not import code from these sibling folders. The minimap has its own package manifest and is not mounted in this adventure.
+Details: [BACKEND_MODE.md](docs/BACKEND_MODE.md).
+
+## Characters
+
+The dragon and the princess are built in code, not loaded from files. Both use `modelKit.js`: fixed parts are merged into a few vertex-coloured meshes, and elliptical tubes follow a path and are re-laid every frame so they bend, sway and flap.
+
+| | Storykeeper Dragon | Princess |
+|---|---|---|
+| File | `dragonModel.js`, `createStoryDragon()` | `princessModel.js`, `createStoryPrincess()` |
+| Detail | about 65,000 triangles (2.4× the first dragon), 22 units long | about 79,000 triangles (75× the first princess), 2.8 tall |
+| Look | red back, orange flanks, white belly, horns and flame; wings glow red → orange → white | sculpted face, auburn hair, pink and lavender gown, jewelled tiara |
+| Moves | wing beats every 5 s, fire every 11 s, looks around, embers from the mouth | breathes, blinks every 3.9 s, hair and gown sway, walks to the player |
+| Contract | `{ root, update(time, defeated), mouth() }` | `{ root, update(time, walking) }` |
+
+Both return a `root` the scene scales (1.8) and places. `update(0)` is the still pose used for reduced motion. All materials are listed in `root.userData.ownedMaterials` so `disposeScene` frees them. The dragon's no-walk circle is `HALL.dragon.radius` and the princess's is the 1.9 in `forestLayout.js`; widen them if a model grows.
+
+Faces must point outward: every tube is wound so one-sided materials show the outside. A tube that is inside-out looks hollow and mis-lit, and `tests/modelKit.test.js` checks the winding in every direction.
+
+Tests: `dragon.test.js` (detail, colours, flap and fire schedule, stays in the hall), `princess.test.js` (detail, outward faces, eyes in the face, blink, hands, hair), `modelKit.test.js`.

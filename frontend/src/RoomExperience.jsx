@@ -60,7 +60,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
     mount.appendChild(renderer.domElement)
     const canvas = renderer.domElement
     canvas.tabIndex = 0
-    canvas.setAttribute('aria-label', adventuring ? 'Memory Palace adventure. WASD move, Space jump, Shift sprint, E interact, mouse or drag to look, Escape pause.' : 'Walkable memory room. WASD to move, mouse or drag to look, E at the door, Escape to pause.')
+    canvas.setAttribute('aria-label', adventuring ? 'Agora adventure. WASD move, Space jump, Shift sprint, E interact, mouse or drag to look, Escape pause.' : 'Walkable memory room. WASD to move, mouse or drag to look, E at the door, Escape to pause.')
     let lastTime = performance.now()
     let frameId = 0
     let lastNearby = null

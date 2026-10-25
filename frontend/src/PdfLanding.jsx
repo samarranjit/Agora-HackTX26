@@ -6,7 +6,7 @@ export default function PdfLanding({ state, onSelect, onRetry, onSelectPack, onR
   const input = useRef(null)
   const [dragging, setDragging] = useState(false)
   const busy = ['checking', 'uploading', 'processing'].includes(state.phase)
-  return <PalaceDialog adventure backend wide tools={false} title="Your notes. A world to remember." kicker="Memory Palace">
+  return <PalaceDialog adventure backend wide tools={false} title="Your notes are about to become your worst enemy. Or your greatest weapon." kicker="Agora">
     <div className="pdf-intro"><span className="pdf-crest" aria-hidden="true">♜</span><p>Upload a PDF to begin your adventure.</p></div>
     <section className="study-library" aria-label="Saved study sets" aria-busy={state.libraryStatus === 'loading'}>
       <h2>Your study sets</h2>

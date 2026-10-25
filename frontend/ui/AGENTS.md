@@ -1,4 +1,4 @@
-# Memory Palace
+# Agora
 
 - Read `docs/GAME_DESIGN.md` and `docs/IMPLEMENTATION_PLAN.md` before gameplay work. Inspect actual files and `git status`; distinguish implemented behavior from proposals.
 - Keep Vite + React + Three.js in JavaScript. Preserve the current playable room and controls during incremental migration. Do not add dependencies or services without task authorization.

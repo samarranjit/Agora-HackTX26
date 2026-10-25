@@ -8,7 +8,7 @@ export function AuthScreen({ flow, state, busy }) {
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
   const valid = username.length >= 3 && password.length >= 8
   const submit = () => flow.authenticate(mode, { username, password })
-  return <PalaceDialog adventure backend tools={false} title={mode === 'login' ? 'Sign In' : 'Create Account'} kicker="Memory Palace">
+  return <PalaceDialog adventure backend tools={false} title={mode === 'login' ? 'Sign In' : 'Create Account'} kicker="Agora">
     <p>{mode === 'login' ? 'Your next adventure begins with a little knowledge.' : 'Create your account to begin your learning adventure.'}</p>
     <form onSubmit={(e) => { e.preventDefault(); submit() }}>
       <label>Username<input data-autofocus autoComplete="username" required minLength={3} maxLength={32} pattern="[A-Za-z0-9_.-]+" value={username} onChange={(e) => setUsername(e.target.value)} disabled={busy} /></label>
