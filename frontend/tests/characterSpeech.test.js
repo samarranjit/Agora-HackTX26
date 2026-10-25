@@ -33,3 +33,12 @@ test('guardian speech is a character-anchored dialog with the server question', 
   assert.match(html, /Question 1\/1/)
   assert.doesNotMatch(html, /palace-overlay/)
 })
+
+test('the dragon uses the same anchored speech dialog as the forest guardians', () => {
+  const attempt = { attempt_id: 'a2', question_id: 'q2', mode: 'adventure', type: 'multiple_choice', prompt: 'Name the castle keeper.', options: [{ id: 'A', text: 'A dragon' }], difficulty: 5, topic: 'Story', battle: { villain_name: 'The Storykeeper Dragon', question_number: 1, question_count: 1, correct_count: 0 }, sources: null, learning_objective: null }
+  const html = renderToStaticMarkup(createElement(CharacterSpeech, { title: 'The Storykeeper Dragon', anchor: { x: 48, y: 22 }, onClose() {} }, createElement(Encounter, { session: {}, state: { attempt, busy: false } })))
+  assert.match(html, /guardian-speech/)
+  assert.match(html, /The Storykeeper Dragon/)
+  assert.match(html, /Name the castle keeper/)
+  assert.doesNotMatch(html, /palace-overlay/)
+})

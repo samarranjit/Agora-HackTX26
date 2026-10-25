@@ -12,12 +12,14 @@ from google.genai import types
 from pydantic import BaseModel, ValidationError
 
 from . import prompts
-from .config import MODEL, MAX_TOPICS, CHALLENGES_PER_TOPIC, SDK_ATTEMPTS, SDK_RETRY_MAX_DELAY_SECONDS
+from .config import MODEL, MAX_TOPICS, CHALLENGES_PER_TOPIC, SDK_ATTEMPTS, SDK_RETRY_MAX_DELAY_SECONDS, SDK_RETRY_STATUS_CODES
 from .schemas import TopicList, GeneratedSubject
 
 client = genai.Client(
     http_options=types.HttpOptions(
-        retry_options=types.HttpRetryOptions(attempts=SDK_ATTEMPTS, max_delay=SDK_RETRY_MAX_DELAY_SECONDS)
+        retry_options=types.HttpRetryOptions(
+            attempts=SDK_ATTEMPTS, max_delay=SDK_RETRY_MAX_DELAY_SECONDS, http_status_codes=list(SDK_RETRY_STATUS_CODES)
+        )
     )
 )
 

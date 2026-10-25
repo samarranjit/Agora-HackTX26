@@ -317,7 +317,7 @@ class GenerationTests(ServiceTestCase):
             response = self.generate()
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json(), {"error": BUSY_MESSAGE})
-        self.assertEqual(len(self.engine.prompts), service_module.GENERATION_ATTEMPTS)
+        self.assertEqual(len(self.engine.prompts), service_module.BUSY_ROUNDS)
 
     def test_the_response_names_the_model_that_actually_wrote_the_questions(self):
         self.engine.last_model = "the-fallback-model"
@@ -362,8 +362,9 @@ class FakeGeminiClient:
         self.calls = []
         self.interactions = self
 
-    def create(self, *, model, **_):
+    def create(self, *, model, **options):
         self.calls.append(model)
+        self.options = options
         problem = self.behaviour.get(model)
         if problem is not None:
             raise problem
@@ -417,6 +418,47 @@ class ModelFallbackTests(unittest.TestCase):
         _, client, _, error = self.run_engine(behaviour)
         self.assertIsInstance(error, GeminiBusy)
         self.assertEqual(client.calls, list(self.MODELS))
+
+    def test_every_call_has_a_time_limit(self):
+        _, client, _, _ = self.run_engine({})
+        self.assertEqual(client.options["timeout"], service_module.CALL_TIMEOUT_SECONDS)
+
+    def test_a_call_that_hangs_counts_as_an_overloaded_model(self):
+        class ReadTimeout(Exception):
+            pass
+
+        engine, client, _, error = self.run_engine({"light": ReadTimeout("the read operation timed out")})
+        self.assertIsNone(error)
+        self.assertEqual(client.calls, ["light", "medium"])
+        self.assertEqual(engine.last_model, "medium")
+
+    def test_a_model_that_just_failed_is_rested_so_the_next_request_does_not_wait_on_it(self):
+        from ai_module import gemini
+
+        client = FakeGeminiClient({"light": OverloadError()})
+        engine = GeminiEngine()
+        with mock.patch.object(gemini, "client", client), mock.patch.object(service_module, "MODELS", self.MODELS):
+            engine.write_questions("prompt", ["store"])
+            engine.write_questions("prompt", ["store"])
+        self.assertEqual(client.calls, ["light", "medium", "medium"], "the second request skipped the resting model")
+
+    def test_a_resting_model_returns_after_its_cooldown(self):
+        from ai_module import gemini
+
+        client = FakeGeminiClient({"light": OverloadError()})
+        engine = GeminiEngine()
+        with mock.patch.object(gemini, "client", client), mock.patch.object(service_module, "MODELS", self.MODELS):
+            engine.write_questions("prompt", ["store"])
+            engine._resting["light"] = 0  # the cooldown has passed
+            client.behaviour = {}
+            engine.write_questions("prompt", ["store"])
+        self.assertEqual(client.calls[-1], "light")
+
+    def test_rate_limits_and_overload_are_not_retried_by_the_sdk(self):
+        from ai_module import config
+
+        self.assertNotIn(429, config.SDK_RETRY_STATUS_CODES)
+        self.assertNotIn(503, config.SDK_RETRY_STATUS_CODES)
 
     def test_which_failures_count_as_overload(self):
         for exc in (OverloadError(), OverloadError("boom", 503), OverloadError("boom", 500),

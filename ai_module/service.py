@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import contract_adapter as adapter
-from .config import MODEL, MODELS
+from .config import CALL_TIMEOUT_SECONDS, MODEL, MODEL_COOLDOWN_SECONDS, MODELS
 from .contract_adapter import ContractQuestion, ContractQuestionBatch, PageIndex
 
 logger = logging.getLogger("ai_module.service")
@@ -48,6 +48,7 @@ MAX_PDF_BYTES = 50 * 1024 * 1024
 PIPELINE_VERSION = "ai_module-gemini-file-search"
 PROMPT_VERSION = "contract-v1"
 GENERATION_ATTEMPTS = 3
+BUSY_ROUNDS = 4  # rounds of asking a busy model again; 4 x (45 s limit + 8 s pause) stays under the backend's 5-minute timeout
 RECITATION_FEEDBACK = (
     "it was blocked for copying too much of the document; write every question, option and "
     "explanation in your own words, and keep each source_quote under 15 words"
@@ -71,6 +72,8 @@ def is_overloaded(exc: Exception) -> bool:
     if status in (429, 500, 502, 503, 504):
         return True
     text = str(exc).lower()
+    if "timeout" in type(exc).__name__.lower() or "timed out" in text or "timeout" in text:
+        return True
     if "no longer available" in text or ("model" in text and "not found" in text):
         return True
     return any(word in text for word in ("too_many_requests", "high demand", "overloaded", "resource_exhausted", "unavailable"))
@@ -141,19 +144,26 @@ class GeminiEngine:
 
     last_model = MODEL  # informational: the model that wrote the most recent batch
 
+    def __init__(self) -> None:
+        self._resting: dict[str, float] = {}  # model -> time it may be tried again
+
     def write_questions(self, prompt: str, store_names: Sequence[str]) -> ContractQuestionBatch:
         busy: Exception | None = None
-        for model in MODELS:
+        now = time.monotonic()
+        # Skip a model that failed moments ago, unless every model is resting.
+        usable = [m for m in MODELS if self._resting.get(m, 0) <= now] or list(MODELS)
+        for model in usable:
             try:
                 batch = self._write_with(model, prompt, store_names)
             except Exception as exc:
                 if not is_overloaded(exc):
                     raise
                 busy = exc
-                logger.warning("Gemini model %s is overloaded or unavailable; trying the next one", model)
+                self._resting[model] = time.monotonic() + MODEL_COOLDOWN_SECONDS
+                logger.warning("Gemini model %s is overloaded or unavailable (%s); resting it and trying the next one", model, type(exc).__name__)
                 continue
             if model != MODELS[0]:
-                logger.warning("Questions were written by the fallback model %s", model)
+                logger.info("Questions were written by the fallback model %s", model)
             self.last_model = model
             return batch
         raise GeminiBusy("every configured Gemini model is overloaded") from busy
@@ -173,6 +183,7 @@ class GeminiEngine:
                 )
             interaction = gemini.client.interactions.create(
                 model=model,
+                timeout=CALL_TIMEOUT_SECONDS,
                 input=full_prompt,
                 # One store per document; File Search can query several at once.
                 tools=[{"type": "file_search", "file_search_store_names": list(store_names)}],
@@ -361,20 +372,24 @@ class GameMasterService:
     def _write_chunk(
         self, topic: str, plan: list[int], stores: Sequence[str]
     ) -> list[tuple[ContractQuestion, int]]:
+        # Two separate budgets: rounds of waiting on a busy model, and attempts at a usable answer.
         feedback = None
-        for attempt in range(1, GENERATION_ATTEMPTS + 1):
+        attempts = busy_rounds = 0
+        while attempts < GENERATION_ATTEMPTS:
             prompt = adapter.questions_prompt(topic, plan, feedback)
             start = time.perf_counter()
             try:
                 batch = self.engine.write_questions(prompt, stores)
             except GeminiBusy:
-                logger.warning("All Gemini models are busy (attempt %d/%d)", attempt, GENERATION_ATTEMPTS)
-                if attempt < GENERATION_ATTEMPTS:
+                busy_rounds += 1
+                logger.warning("All Gemini models are busy (round %d/%d)", busy_rounds, BUSY_ROUNDS)
+                if busy_rounds < BUSY_ROUNDS:
                     time.sleep(OVERLOAD_PAUSE_SECONDS)
                     continue
                 raise ServiceError(503, BUSY_MESSAGE) from None
             except Exception as exc:
-                if _is_recitation_block(exc) and attempt < GENERATION_ATTEMPTS:
+                attempts += 1
+                if _is_recitation_block(exc) and attempts < GENERATION_ATTEMPTS:
                     # Gemini refuses answers that copy too much of a published text.
                     # Asking again for paraphrased questions and a shorter quote
                     # usually succeeds.
@@ -383,6 +398,7 @@ class GameMasterService:
                     continue
                 logger.exception("Gemini call failed")
                 raise ServiceError(502, "The question generator is unavailable. Please try again.") from None
+            attempts += 1
             logger.info("Gemini wrote %d/%d questions in %.1fs", len(batch.questions), len(plan), time.perf_counter() - start)
             try:
                 ordered, followed = adapter.align_to_plan(batch.questions, plan)

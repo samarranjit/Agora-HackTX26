@@ -77,6 +77,8 @@ test('audio requires a trusted gesture, limits repeats, mutes all branches, and 
   assert.equal(sound.play('goblin'), false)
   context.currentTime += 0.3
   assert.equal(sound.play('footstep'), true)
+  assert.equal(sound.play('victory'), true)
+  assert.equal(sound.play('guitar'), true)
   sound.setMuted(true); assert.equal(master.gain.value, 0); assert.equal(sound.play('collect'), false)
   sound.setMuted(false); assert.ok(master.gain.value > 0)
   sound.setActive(false); assert.equal(ambience.gain.value, 0); assert.equal(sound.play('footstep'), false)
@@ -86,6 +88,23 @@ test('audio requires a trusted gesture, limits repeats, mutes all branches, and 
   assert.equal(context.state, 'closed')
   assert.ok(context.nodes.every((node) => node.disconnected))
   assert.ok(context.nodes.filter((node) => node.started).every((node) => node.stopped))
+})
+
+test('entering the castle darkens the drone and plays a hall sting once', () => {
+  const { sound, contexts } = audioHarness()
+  assert.equal(sound.unlock({ isTrusted: true }), true)
+  const context = contexts[0]
+  sound.setActive(true)
+  sound.setEnvironment('castle')
+  const drone = context.nodes.find((node) => node.frequency && node.started && node.frequency.value < 50)
+  const filter = context.nodes.find((node) => node.frequency && !node.started && node.frequency.value < 200)
+  assert.ok(drone, 'castle drone must sit in the low rumble range')
+  assert.ok(filter, 'castle wind must be filtered darker than the forest')
+  assert.equal(sound.play('castle'), true)
+  assert.equal(sound.play('castle'), false)
+  sound.setEnvironment('forest')
+  assert.ok(context.nodes.some((node) => node.frequency && node.started && node.frequency.value === 196))
+  sound.dispose()
 })
 
 test('unsupported and failed audio leave a usable silent experience', () => {
@@ -168,16 +187,21 @@ test('a defeated goblin or wolf stays visible while burning, then is gone', () =
   handle.dispose()
 })
 
-test('dragon completion sparkles are emitted once, expire, and do not change progress', () => {
+test('a defeated dragon burns away, the prison opens, and the princess walks to the player', () => {
   const handle = createCastleHallScene(), run = createForestView()
-  handle.update(1, { forestRun: run }) // Finish the entrance cue.
+  handle.update(1, { forestRun: run, reducedMotion: true })
+  const dragon = handle.scene.getObjectByName('Storykeeper Dragon')
+  const princess = handle.scene.getObjectByName('Storywood Princess')
+  const startZ = princess.position.z
+  assert.equal(dragon.visible, true)
+  const walked = []
   const victory = { ...run, stage: 'castle', dragonDefeated: true, xp: 100 }
-  handle.update(0, { forestRun: victory })
-  const points = handle.scene.getObjectByName('Storywood sparkles')
-  assert.ok(points.geometry.attributes.color.array.some((v) => v > 0))
-  handle.update(1, { forestRun: victory })
-  handle.update(0.05, { forestRun: victory })
-  assert.ok(points.geometry.attributes.color.array.every((v) => v === 0))
+  handle.update(0.05, { forestRun: victory, playerPosition: { x: 0, y: 9.6, z: -36 }, reducedMotion: true, onPrincessWalk: () => walked.push('guitar') })
+  assert.ok(handle.world.move({ x: 0, z: -85 }, { x: 0, z: -96 }).z < -95.9)
+  assert.equal(dragon.visible, false)
+  handle.update(2, { forestRun: victory, playerPosition: { x: 0, y: 9.6, z: -36 }, reducedMotion: true, onPrincessWalk: () => walked.push('guitar') })
+  assert.ok(princess.position.z > startZ)
+  assert.ok(walked.length > 0)
   assert.equal(victory.xp, 100)
   handle.dispose(); handle.dispose()
 })
