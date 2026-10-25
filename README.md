@@ -13,3 +13,5 @@ Run from the repository root with `npm.cmd run dev`. Root `.env.local`, `VITE_AP
 The backend must be online and allow the frontend's exact CORS origin. Current server rules and limitations are described in [BACKEND_MODE.md](docs/BACKEND_MODE.md). Live validation is distinguished from intercepted tests in [LINEAR_FLOW_VALIDATION.md](docs/LINEAR_FLOW_VALIDATION.md).
 
 Checks: `node --test tests/*.test.js`, `npm.cmd run lint`, `npm.cmd run build`.
+
+The merged repository also contains the backend (`backend/`), game engine (`Game_Engine/`), question-generation service (`ai_module/`), and a standalone Phaser minimap (`minimap/`). These incoming projects are preserved unchanged from `main`. The minimap is not mounted in the root adventure and has its own package manifest; root commands continue to run the authenticated Three.js app without additional dependencies or alternate player entry points.
