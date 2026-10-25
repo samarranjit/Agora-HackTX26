@@ -113,6 +113,36 @@ class QuestionSetResponse(BaseModel):
     updated_at: str
 
 
+# --- Study packs (one PDF upload -> practice and adventure questions) ---
+
+
+class StudyPackSet(BaseModel):
+    question_set_id: str
+    mode: QuestionMode
+    status: Status
+    error: str | None
+    question_count: int
+
+
+class StudyPackResponse(BaseModel):
+    """Progress of one uploaded PDF. The pack is playable when status is "ready"."""
+
+    document_id: str = Field(description="Identifies the pack; use it to poll.")
+    name: str
+    topic: str
+    status: Status
+    stage: Literal["indexing", "writing_questions", "done", "failed"]
+    error: str | None
+    practice: StudyPackSet | None = Field(description="Null until indexing finishes.")
+    adventure: StudyPackSet | None = Field(description="Null until indexing finishes.")
+    created_at: str
+    updated_at: str
+
+
+class StudyPackListResponse(BaseModel):
+    study_packs: list[StudyPackResponse]
+
+
 # --- Questions and answers ---
 
 

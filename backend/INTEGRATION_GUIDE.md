@@ -22,14 +22,17 @@ Contents: [1 Status](#1-what-is-and-is-not-connected) · [2 Architecture](#2-arc
 
 | Piece | Status |
 |---|---|
-| `Game_master/` folder | **Does not exist** in this repository. No RAG entry point, PDF store, authentication, database, or web conventions were found to reuse. |
-| HTTP client for a game master | Implemented (`HttpGameMaster`) and tested against a mock transport only. |
+| Gemini game master | `ai_module/service.py` in this repository implements the contract on top of the Gemini File Search pipeline. See `ai_module/SERVICE.md`. |
+| HTTP client for a game master | Implemented (`HttpGameMaster`). Tested against a mock transport, and run end to end against the `ai_module` service with Gemini replaced by a stand-in. |
 | Contract validation of its output | Implemented and tested (`validate_generated_set`). |
-| Real PDF ingestion and question generation | **Not exercised.** Nothing real to call yet. |
+| Real PDF ingestion and question generation by Gemini | **Not exercised by this project's tests.** Requires a Gemini API key and a run of `ai_module.service`. |
 | `fake` provider | Implemented for tests and explicit demos. Its questions ignore the PDF. |
 
-To finish the integration, a game master must implement section 4 and the server must be
-started with `GAME_MASTER_MODE=http`. If it is instead a Python library in this repository,
+To use the Gemini service, run it (`python -m ai_module.service`, see `ai_module/SERVICE.md`)
+and start this server with `GAME_MASTER_MODE=http`, `GAME_MASTER_URL=http://127.0.0.1:9000`,
+`GAME_MASTER_API_KEY=<the service's RAG_API_KEY>`, and `GAME_MASTER_TIMEOUT_SECONDS=300`
+(indexing a large PDF can take longer than the 60 second default). To use a different game
+master, implement section 4 and set the same variables. If it is instead a Python library in this repository,
 add an adapter class with the same two methods as `HttpGameMaster` (see `GameMaster` in
 `rag/protocol.py`) and select it in `build_game_master` in `api/app.py`. No `sys.path` changes
 are needed if it is a normal uv path dependency.
@@ -171,6 +174,19 @@ your `error` text safe to show to end users.
 
 ## 5. PDF and generation flow
 
+**Recommended: the study pack.** `POST /api/study-packs` (multipart `file`, optional `topic` and
+`practice_count`) does every step below in one request. It validates and stores the PDF, then
+returns `202` immediately. In the background the server (1) sends the PDF to the game master,
+(2) creates a practice set (`practice_count` questions, difficulty 1-5) and an adventure set
+(3 questions for the 3 villains, at exactly their difficulties 1, 3 and 5), (3) writes both at the
+same time, (4) checks the adventure set really has each villain's level, and (5) marks the pack
+`ready`. Poll `GET /api/study-packs/{document_id}` for `status` and `stage`
+(`indexing` -> `writing_questions` -> `done`, or `failed` with an `error`). A pack is `failed`
+if indexing fails, either set fails, or the adventure set is missing a required difficulty
+(the practice set stays usable). The pack's state is stored in the `study_packs` table
+(migration 2), so a restart marks an unfinished pack `failed` instead of leaving it stuck.
+The lower-level steps follow; use them directly only for custom sets.
+
 1. `POST /api/documents` (multipart `file`). The server checks size, the `%PDF-` header,
    that pypdf can open it, that it is not encrypted, and that it has pages. The filename
    and `Content-Type` are never trusted. Errors: `too_large` (413), `empty_file`,
@@ -207,7 +223,10 @@ Interactive docs and schemas: `/docs` and `/openapi.json`. All `/api/` responses
 | `POST /api/auth/register` | no | `{username, password}` → 201 |
 | `POST /api/auth/login` | no | → `{access_token, token_type, expires_at}` |
 | `POST /api/auth/logout` | yes | Ends the current session (204) |
-| `POST /api/documents` | yes | Upload a PDF (multipart `file`) → 202 |
+| `POST /api/study-packs` | yes | **Upload a PDF and get practice + adventure questions in one call** (multipart `file`, optional `topic`, `practice_count`) → 202 |
+| `GET /api/study-packs/{document_id}` | yes | Pack progress: `status`, `stage`, `error`, and both question sets |
+| `GET /api/study-packs` | yes | Your packs, newest first |
+| `POST /api/documents` | yes | Upload a PDF only (multipart `file`) → 202 |
 | `GET /api/documents/{id}` | yes | Owner's ingestion status |
 | `POST /api/question-sets` | yes | Request generation → 202 |
 | `GET /api/question-sets/{id}` | yes | Status and safe question summaries (never answers) |
@@ -294,10 +313,11 @@ Enforced where: reward lookup, clamping, health, and early defeat are in the eng
 what the engine uses; the client never supplies correctness, difficulty, or balances.
 
 Question selection (`application/game_service.py`): practice uses your ready practice questions, least
-often attempted first, in generation order. A battle takes the 3 adventure questions
-closest to the villain's target difficulty (villains are spread over 1–5, so with three
-villains the targets are 1, 3, and 5), least often attempted first. Both are simple
-starting policies, not adaptive teaching.
+often attempted first, in generation order. Each battle takes one adventure question at the
+villain's exact target difficulty: Forest Goblin 1, Bridge Troll 3, Castle Dragon 5. Within
+that difficulty it chooses the least-used question first, then generation order. If the
+stored pool lacks the exact difficulty, battle start returns `409 not_enough_questions`
+without charging the player. This is a simple starting policy, not adaptive teaching.
 
 ## 9. Concurrency and idempotency
 
@@ -408,20 +428,25 @@ the sequence a frontend performs. The same flow, over real HTTP with a restart i
 middle, was run successfully against the fake provider:
 
 1. Register and log in → token.
-2. Upload a PDF → `document_id`; poll `GET /api/documents/{id}` until `ready`.
-3. `POST /api/question-sets` (`practice`, count 5) and (`adventure`, count 6); poll until `ready`.
-4. Five times: `POST /api/practice/attempts`, answer → XP +10, +15, +20, +25, +30 =
-   100; the last response has `adventure_unlocked_now: true`.
-5. `POST /api/adventure/battles` with a new `Idempotency-Key` → XP 70; repeating the same
-   request returns the identical body and still leaves XP at 70.
-6. Answer the first battle question → e.g. wrong at difficulty 1: XP 68, health 95.
-7. `GET /api/me/status` → `{"xp": 68, "health": 95, "location": "battle", ...}`.
+2. `POST /api/study-packs` with the PDF → `document_id`; poll `GET /api/study-packs/{id}` until
+   `ready`. (The older way: upload with `/api/documents`, then request both sets with
+   `/api/question-sets`; the adventure output must cover exact difficulties 1, 3, and 5.)
+3. Play practice questions as below.
+4. Until the adventure unlocks: `POST /api/practice/attempts`, answer. Each correct answer
+   earns 10-30 XP by its difficulty; the response that reaches 100 XP has
+   `adventure_unlocked_now: true`.
+5. `POST /api/adventure/battles` with a new `Idempotency-Key` → the entry cost (30 XP) is taken
+   once; repeating the same request returns the identical body and charges nothing more.
+6. Answer the battle question (one per villain, at difficulty 1, 3, then 5). A wrong answer
+   costs XP and health by difficulty; a right one earns XP.
+7. `GET /api/me/status` → current `xp`, `health`, and `location` (for example `"battle"`).
 8. Stop and restart the backend; log in again.
 9. `GET /api/me/state` is identical, `GET /api/me/active-attempt` returns the same
    pending question, and answering it continues the battle.
 
-With a real game master, step 2 should send a real PDF and steps 3+ should show
-`provider: "http"`; **that path has not been run** because no game master exists yet.
+This flow has been run end to end with the real backend and the `ai_module` game master service
+(Gemini replaced by a stand-in): the study pack, practice, unlock, and all three villains. With
+real Gemini, step 2 should show `provider: "http"` on the pack's sets; **that has not been run**.
 
 ## 17. Remaining limitations
 

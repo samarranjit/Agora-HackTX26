@@ -48,7 +48,10 @@ All `/api/` calls except register/login need `Authorization: Bearer <access_toke
 | `POST /api/practice/attempts` | `{}` or `{question_set_id}` | `{created, attempt}` | 201 new, 200 = already pending one |
 | `POST /api/adventure/battles` | `{}` or `{question_set_id}` | `BattleStartResponse` | **needs `Idempotency-Key`**; charges 30 XP once |
 | `POST /api/attempts/{attempt_id}/answer` | `{answer: "12"}` | `AnswerResponse` | **needs `Idempotency-Key`**; graded server-side |
-| `POST /api/documents` | multipart `file` (PDF) | 202 `DocumentResponse` | poll `GET /api/documents/{id}` |
+| **`POST /api/study-packs`** | multipart `file` (PDF), optional `topic`, optional `practice_count` (1-30, default 10) | 202 `StudyPackResponse` | **The one call a frontend needs for a PDF.** Stores it, has it indexed, and writes practice and adventure questions. Poll `GET /api/study-packs/{document_id}` |
+| `GET /api/study-packs/{document_id}` | – | `StudyPackResponse` | `status`: `processing` / `ready` / `failed`; `stage`: `indexing` / `writing_questions` / `done` / `failed`; `error` |
+| `GET /api/study-packs` | – | `{study_packs: StudyPackResponse[]}` | Your uploaded PDFs, newest first |
+| `POST /api/documents` | multipart `file` (PDF) | 202 `DocumentResponse` | Lower-level: upload only. Use study packs instead unless you need custom sets |
 | `POST /api/question-sets` | `{document_ids, mode, topic, count, difficulty_min?, difficulty_max?}` | 202 `QuestionSetResponse` | poll `GET /api/question-sets/{id}` |
 | `GET /healthz` | – | `{status, game_master}` | no auth; service liveness, not player health |
 
@@ -101,8 +104,51 @@ interface ErrorResponse { error: { code: string; message: string;
   details: { field: string; problem: string }[] | null } }
 ```
 
+### From a PDF to a playable game (the study pack)
+
+```js
+const form = new FormData();
+form.append("file", pdfFile);                       // required
+form.append("topic", "Chapter 3: Neural networks"); // optional; blank = whole document
+form.append("practice_count", "10");                // optional, 1-30
+const headers = { Authorization: `Bearer ${token}` };
+const r = await fetch(`${API}/api/study-packs`, { method: "POST", headers, body: form });
+// (do not set Content-Type yourself: the browser adds the multipart boundary)
+const pack = await r.json();                        // 202, status "processing" - returns immediately
+
+// poll every 1-2 s, with a timeout (indexing a big PDF can take a minute or more)
+let p;
+do { await sleep(1500);
+     p = await (await fetch(`${API}/api/study-packs/${pack.document_id}`, { headers })).json();
+     showProgress(p.stage);                         // indexing -> writing_questions -> done
+} while (p.status === "processing" || p.status === "pending");
+// p.status === "ready": call POST /api/practice/attempts as usual. "failed": show p.error.
+```
+
+```ts
+interface StudyPackResponse {
+  document_id: string; name: string; topic: string;
+  status: "pending" | "processing" | "ready" | "failed";
+  stage: "indexing" | "writing_questions" | "done" | "failed";
+  error: string | null;
+  practice:  { question_set_id: string; mode: "practice";  status: string; error: string | null; question_count: number } | null;
+  adventure: { question_set_id: string; mode: "adventure"; status: string; error: string | null; question_count: number } | null;
+  created_at: string; updated_at: string }          // practice/adventure are null until indexing finishes
+```
+
+- The pack makes **10 practice questions** (difficulties 1-5) and **3 adventure questions at
+  exactly difficulties 1, 3 and 5** (one per villain). "ready" means both exist.
+- Practice and battles draw from all of a player's ready sets. To play only this PDF, send its
+  set id: `POST /api/practice/attempts {"question_set_id": pack.practice.question_set_id}`
+  (and the same for `/api/adventure/battles` with `pack.adventure.question_set_id`).
+- Errors you can get when submitting: `413 too_large`, `422 not_a_pdf | malformed_pdf |
+  encrypted_pdf | empty_pdf | empty_file | invalid_request`, `503 game_master_unavailable`.
+  If the server restarts while a pack is being made, the pack becomes `failed` ("Interrupted
+  by a server restart") and the PDF must be submitted again.
+
 ### Flows
 
+0. **New PDF** → `POST /api/study-packs` → poll until `ready` (above).
 1. **Login** → store `access_token` (memory or `sessionStorage`) → `GET /api/me/state`.
 2. **Page load / reconnect** → `GET /api/me/status` + `GET /api/me/active-attempt`. If an
    attempt comes back, show that exact question (same `attempt_id`, even after a server
@@ -153,8 +199,9 @@ not_a_pdf | malformed_pdf | encrypted_pdf | empty_pdf | empty_file`, `500 intern
 ### Game rules (for display text only; the backend enforces them)
 
 Correct answer: +10/15/20/25/30 XP for difficulty 1–5 (practice and battles). Correct practice
-also restores 5 health. Adventure unlocks permanently at 100 XP. A battle costs 30 XP, has 3
-questions, and needs 2 correct to win. A wrong battle answer costs 2×difficulty XP and
+also restores 5 health. Adventure unlocks permanently at 100 XP. A battle costs 30 XP, has 1
+question, and needs that answer correct to win. The Goblin, Troll, and Dragon use difficulty
+1, 3, and 5 respectively. A wrong battle answer costs 2×difficulty XP and
 5×difficulty health; at 0 health the battle ends as `knocked_out` (no refund). Villains in
 order: `forest-goblin` → `bridge-troll` → `castle-dragon`.
 

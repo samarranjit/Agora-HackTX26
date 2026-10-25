@@ -141,6 +141,24 @@ MIGRATIONS: tuple[str, ...] = (
         PRIMARY KEY (owner_id, idempotency_key)
     );
     """,
+    # 2: study packs. One upload that becomes a document, a practice set, and an
+    #    adventure set, with a single status the frontend can poll.
+    """
+    CREATE TABLE study_packs (
+        document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+        owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        topic TEXT NOT NULL,
+        practice_count INTEGER NOT NULL,
+        practice_set_id TEXT REFERENCES question_sets(id),
+        adventure_set_id TEXT REFERENCES question_sets(id),
+        status TEXT NOT NULL
+            CHECK (status IN ('pending', 'processing', 'ready', 'failed')),
+        error TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX study_packs_owner ON study_packs(owner_id);
+    """,
 )
 
 

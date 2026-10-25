@@ -84,7 +84,13 @@ The answer response:
 
 `xp_delta` / `health_delta` are the changes actually applied (after clamping). In a battle,
 `encounter.outcome` is `in_progress`, `won`, `lost`, or `knocked_out`, and `next_attempt`
-holds the next question while the battle continues.
+holds the next question while the battle continues. In the current ground-zero campaign,
+each encounter has one question, so a valid answer ends that encounter and
+`next_attempt` is null.
+
+The frontend does not choose the villain or difficulty. `POST /api/adventure/battles`
+selects the current villain and the backend supplies difficulty 1 for the Forest Goblin,
+3 for the Bridge Troll, and 5 for the Castle Dragon.
 
 ## Retries and idempotency
 
@@ -114,15 +120,37 @@ Every error has one shape:
 `code` is stable for programs; `message` is for people. `422 invalid_request` includes
 `details: [{field, problem}]`.
 
-## Documents and question sets (optional features)
+## Uploading a PDF: the study pack (recommended)
+
+```text
+POST /api/study-packs  multipart: file (PDF), topic? (text), practice_count? (1-30, default 10)
+  -> 202 StudyPackResponse (status "processing"), returns immediately
+GET  /api/study-packs/{document_id} -> poll until status is "ready" or "failed"
+GET  /api/study-packs               -> your packs, newest first
+```
+
+One upload becomes a stored document, a practice set, and an adventure set; the server does
+the indexing, question writing, and checks. `stage` is `indexing`, then `writing_questions`,
+then `done` (or `failed`, with `error`). When `status` is `ready`, use the normal practice and
+battle endpoints. Send `practice.question_set_id` / `adventure.question_set_id` as
+`question_set_id` to play only this PDF; otherwise play draws from all your ready sets. The
+adventure set always has exactly the difficulty levels the villains need (1, 3 and 5). A
+restart during creation turns the pack `failed` ("Interrupted by a server restart"); submit
+again. Errors: `413 too_large`, `422 not_a_pdf | malformed_pdf | encrypted_pdf | empty_pdf |
+empty_file | invalid_request`, `503 game_master_unavailable`.
+
+## Documents and question sets (lower-level, optional)
 
 ```text
 POST /api/documents (multipart "file")  → 202 {document_id, status: "pending"} … poll until "ready" or "failed"
-POST /api/question-sets {document_ids, mode, topic, count} → 202 … poll until "ready" or "failed"
+POST /api/question-sets {document_ids, mode, topic, count, difficulty_min, difficulty_max} → 202 … poll until "ready" or "failed"
 ```
 
 Statuses are `pending`, `processing`, `ready`, `failed` (with `error`). Poll every second or
 two with a timeout; do not wait forever. Another player's IDs always look like `404`.
+For the minimal adventure, request `mode: "adventure"`, `count: 3`,
+`difficulty_min: 1`, and `difficulty_max: 5`; the provider must return exact difficulties
+1, 3, and 5.
 
 ## Who owns each value
 

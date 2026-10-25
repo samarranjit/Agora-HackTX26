@@ -70,6 +70,11 @@ Request:
 `mode` is `practice` or `adventure`. `count` is 1–50. Return **at most** `count` questions
 within the requested difficulty range where possible. Retrieve only from `document_ids`.
 
+For the current minimal campaign, an adventure request with `count: 3`,
+`difficulty_min: 1`, and `difficulty_max: 5` must return exactly three questions at
+difficulties 1, 3, and 5. The backend reserves those exact levels for the Forest Goblin,
+Bridge Troll, and Castle Dragon; a missing level prevents that encounter from starting.
+
 Response:
 
 ```json

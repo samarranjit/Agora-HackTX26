@@ -24,10 +24,17 @@ class FakeGameMaster:
         self.ingested.append(document_id)
 
     def generate_questions(self, request: GenerationRequest) -> object:
-        span = request.difficulty_max - request.difficulty_min + 1
         questions = []
         for index in range(request.count):
-            difficulty = request.difficulty_min + index % span
+            if request.count == 1:
+                difficulty = request.difficulty_min
+            else:
+                offset = round(
+                    index
+                    * (request.difficulty_max - request.difficulty_min)
+                    / (request.count - 1)
+                )
+                difficulty = request.difficulty_min + offset
             left, right = difficulty + 1, index % 4 + 2
             questions.append(
                 {

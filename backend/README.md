@@ -26,9 +26,12 @@ Frontend ──HTTPS + bearer token──▶ Backend ──HTTP (RAG contract v1
 - The RAG service never changes player state and never decides rewards or progression.
 - The engine imports nothing outside the Python standard library.
 
-> No real game master exists yet. Until one is connected, uploads and generation return
-> HTTP 503, unless you explicitly set `GAME_MASTER_MODE=fake` (demo questions that are **not**
-> generated from the PDF).
+> The Gemini game master lives in [`../ai_module/`](../ai_module/); `ai_module/service.py` exposes
+> the RAG contract that this backend calls (see `ai_module/SERVICE.md`). With
+> `GAME_MASTER_MODE=disabled` (the default), uploads and generation return HTTP 503.
+> `GAME_MASTER_MODE=fake` gives demo questions that are **not** generated from the PDF.
+> The backend and that service have been run together end to end with Gemini replaced by a
+> stand-in; they have not been run against real Gemini by this project's tests.
 
 ## Game rules
 
@@ -46,10 +49,11 @@ practice and adventure.
 | Adventure unlocks at | 100 XP, permanently |
 | Battle entry | 30 XP, charged once when the battle starts |
 | Wrong battle answer | −2 × difficulty XP and −5 × difficulty health (neither below 0) |
-| Questions per battle / needed to win | 3 / 2 |
+| Questions per battle / needed to win | 1 / 1 |
 | Health reaches 0 | The battle ends at once as a loss (`knocked_out`), the player returns to the playground, the entry fee is not refunded, and practice is needed to recover health first |
 | Winning | Completes the villain and opens the next one (no bonus XP) |
 | Villains | Forest Goblin → Bridge Troll → Castle Dragon, in order |
+| Adventure difficulty sequence | 1 → 3 → 5 |
 
 Difficulty is a whole number from 1 to 5 and always comes from the stored question. These
 values are initial product choices; an earlier prototype used a fixed +20 points with no

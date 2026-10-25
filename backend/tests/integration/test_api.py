@@ -670,21 +670,15 @@ class AdventureTests(ApiTestCase):
     def test_winning_a_battle(self) -> None:
         headers = self.register()
         self.unlock_adventure(headers)
-        self.question_set(headers, "adventure", 6)
+        self.question_set(headers, "adventure", 3)
         attempt = self.start_battle(headers).json()["attempt"]
         self.assertEqual(attempt["battle"]["question_number"], 1)
-        seen = []
-        for _ in range(3):
-            response = self.answer(headers, attempt)
-            body = response.json()
-            seen.append((body["xp_delta"], body["encounter"]["outcome"]))
-            attempt = body["next_attempt"]
-        self.assertEqual(
-            [outcome for _, outcome in seen], ["in_progress"] * 2 + ["won"]
-        )
-        self.assertIsNone(attempt)
+        self.assertEqual(attempt["difficulty"], 1)
+        body = self.answer(headers, attempt).json()
+        self.assertEqual(body["encounter"]["outcome"], "won")
+        self.assertIsNone(body["next_attempt"])
         state = self.state(headers)
-        self.assertEqual(state["xp"], 70 + sum(delta for delta, _ in seen))
+        self.assertEqual(state["xp"], 70 + body["xp_delta"])
         self.assertEqual(state["location"], "adventure")
         self.assertEqual(
             [v["status"] for v in state["villains"]], ["completed", "current", "locked"]
@@ -706,25 +700,48 @@ class AdventureTests(ApiTestCase):
     def test_resume_returns_the_same_stored_question_after_a_restart(self) -> None:
         headers = self.register()
         self.unlock_adventure(headers)
-        self.question_set(headers, "adventure", 6)
+        self.question_set(headers, "adventure", 3)
         started = self.start_battle(headers).json()
-        first = self.answer(headers, started["attempt"]).json()
-        pending = first["next_attempt"]
+        pending = started["attempt"]
+        xp = started["xp"]
         # A new app on the same data, with a provider that must not be called.
         failing = ScriptedGameMaster(generate_error=ProviderError("must not be called"))
         self.client = self.start_app(failing)
         headers = self.login("ada")
         active = self.client.get("/api/me/active-attempt", headers=headers).json()
         self.assertEqual(active["attempt"], pending)
-        self.assertEqual(self.state(headers)["xp"], first["xp"])
+        self.assertEqual(self.state(headers)["xp"], xp)
         self.assertEqual(failing.requests, [])
         resumed = self.answer(headers, pending).json()
-        self.assertEqual(resumed["xp"], first["xp"] + resumed["xp_delta"])
+        self.assertEqual(resumed["xp"], xp + resumed["xp_delta"])
         self.assertEqual(self.state(headers)["xp"], resumed["xp"])
+
+    def test_missing_stage_difficulty_does_not_charge_the_player(self) -> None:
+        headers = self.register()
+        self.unlock_adventure(headers)
+        document_id = self.upload(headers)
+        created = self.client.post(
+            "/api/question-sets",
+            headers=headers,
+            json={
+                "document_ids": [document_id],
+                "mode": "adventure",
+                "topic": "Multiplication",
+                "count": 1,
+                "difficulty_min": 2,
+                "difficulty_max": 2,
+            },
+        )
+        self.assertEqual(created.status_code, 202, created.text)
+        response = self.start_battle(headers)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"]["code"], "not_enough_questions")
+        self.assertIn("difficulty 1", response.json()["error"]["message"])
+        self.assertEqual(self.state(headers)["xp"], 100)
 
 
 class KnockoutTests(ApiTestCase):
-    rules = Rules(max_health=10, starting_health=10)
+    rules = Rules(max_health=5, starting_health=5, min_health_to_start_battle=5)
 
     def test_zero_health_ends_the_battle_and_requires_recovery(self) -> None:
         headers = self.register()
@@ -732,24 +749,20 @@ class KnockoutTests(ApiTestCase):
         self.question_set(headers, "adventure", 6)
         attempt = self.start_battle(headers).json()["attempt"]
         self.assertEqual(attempt["difficulty"], 1)
-        self.answer(headers, attempt, "-1")
-        attempt = self.client.get("/api/me/active-attempt", headers=headers).json()[
-            "attempt"
-        ]
         body = self.answer(headers, attempt, "-1").json()
 
         self.assertEqual(body["encounter"]["outcome"], "knocked_out")
         self.assertEqual(body["health"], 0)
         self.assertIsNone(body["next_attempt"])
         state = self.state(headers)
-        self.assertEqual((state["xp"], state["location"]), (66, "playground"))
+        self.assertEqual((state["xp"], state["location"]), (68, "playground"))
         self.assertIsNone(state["active_battle"])
         self.assertIsNone(
             self.client.get("/api/me/active-attempt", headers=headers).json()["attempt"]
         )
         blocked = self.start_battle(headers)
         self.assertEqual(blocked.json()["error"]["code"], "insufficient_health")
-        self.assertEqual(self.state(headers)["xp"], 66)
+        self.assertEqual(self.state(headers)["xp"], 68)
 
         self.practice(headers)
         self.assertEqual(self.state(headers)["health"], 5)
