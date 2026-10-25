@@ -13,6 +13,7 @@ from dataclasses import dataclass
 class VillainInfo:
     id: str
     name: str
+    target_difficulty: int
 
 
 @dataclass(frozen=True)
@@ -34,9 +35,9 @@ class Campaign:
 
 DEFAULT_CAMPAIGN = Campaign(
     villains=(
-        VillainInfo("forest-goblin", "Forest Goblin"),
-        VillainInfo("bridge-troll", "Bridge Troll"),
-        VillainInfo("castle-dragon", "Castle Dragon"),
+        VillainInfo("forest-goblin", "Forest Goblin", 1),
+        VillainInfo("bridge-troll", "Bridge Troll", 3),
+        VillainInfo("castle-dragon", "Castle Dragon", 5),
     ),
     slide_count=3,
 )

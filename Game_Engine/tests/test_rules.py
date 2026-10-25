@@ -36,8 +36,8 @@ class DefaultRuleTests(unittest.TestCase):
             [rules.correct_reward(d) for d in range(1, 6)], [10, 15, 20, 25, 30]
         )
         self.assertEqual((rules.starting_xp, rules.unlock_threshold), (0, 100))
-        self.assertEqual((rules.battle_cost, rules.battle_question_count), (30, 3))
-        self.assertEqual(rules.battle_wins_required, 2)
+        self.assertEqual((rules.battle_cost, rules.battle_question_count), (30, 1))
+        self.assertEqual(rules.battle_wins_required, 1)
         self.assertEqual((rules.starting_health, rules.max_health), (100, 100))
         self.assertEqual(rules.battle_wrong_xp_per_difficulty, 2)
         self.assertEqual(rules.battle_wrong_health_per_difficulty, 5)

@@ -37,8 +37,10 @@ class Rules:
     # A wrong battle answer costs this many XP per difficulty level.
     battle_wrong_xp_per_difficulty: int = 2
     battle_cost: int = 30
-    battle_question_count: int = 3
-    battle_wins_required: int = 2
+    # Ground-zero adventure: one question per villain. With three villains,
+    # this makes three adventure questions total (easy, harder, final).
+    battle_question_count: int = 1
+    battle_wins_required: int = 1
 
     max_health: int = 100
     starting_health: int = 100

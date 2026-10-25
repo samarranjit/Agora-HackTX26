@@ -23,6 +23,7 @@ import logging
 import sqlite3
 import uuid
 from collections.abc import Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from decimal import Decimal
@@ -121,7 +122,7 @@ class GameService:
         now = db.utc_now()
         with self.connection() as conn, db.transaction(conn):
             changed = 0
-            for table in ("documents", "question_sets"):
+            for table in ("documents", "question_sets", "study_packs"):
                 cursor = conn.execute(
                     f"UPDATE {table} SET status = 'failed', error = ?, updated_at = ?"
                     " WHERE status IN ('pending', 'processing')",
@@ -312,6 +313,26 @@ class GameService:
         difficulty_min: int,
         difficulty_max: int,
     ) -> dict[str, Any]:
+        return self._create_question_set(
+            account.user_id,
+            document_ids,
+            mode,
+            topic,
+            count,
+            difficulty_min,
+            difficulty_max,
+        )
+
+    def _create_question_set(
+        self,
+        owner_id: str,
+        document_ids: Sequence[str],
+        mode: QuestionMode,
+        topic: str,
+        count: int,
+        difficulty_min: int,
+        difficulty_max: int,
+    ) -> dict[str, Any]:
         game_master = self._require_game_master()
         unique_ids = tuple(dict.fromkeys(document_ids))
         set_id = uuid.uuid4().hex
@@ -319,7 +340,7 @@ class GameService:
         with self.connection() as conn, db.transaction(conn):
             for document_id in unique_ids:
                 row = repo.fetch_document(conn, document_id)
-                if row is None or row["owner_id"] != account.user_id:
+                if row is None or row["owner_id"] != owner_id:
                     raise _not_found("document")
                 if row["status"] != "ready":
                     raise AppError(
@@ -334,7 +355,7 @@ class GameService:
                 " VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)",
                 (
                     set_id,
-                    account.user_id,
+                    owner_id,
                     mode.value,
                     topic,
                     count,
@@ -485,6 +506,220 @@ class GameService:
             ],
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
+        }
+
+    # --- Study packs: one PDF upload becomes a practice set and an adventure set ---
+
+    def create_study_pack(
+        self,
+        account: Account,
+        name: str,
+        data: bytes,
+        topic: str,
+        practice_count: int,
+    ) -> dict[str, Any]:
+        """Validate and store a PDF and record the pack. Then run_study_pack().
+
+        Raises AppError for an unusable PDF or when no game master is configured,
+        before anything is recorded.
+        """
+        document = self.upload_document(account, name, data)
+        now = db.utc_now()
+        with self.connection() as conn, db.transaction(conn):
+            conn.execute(
+                "INSERT INTO study_packs (document_id, owner_id, topic,"
+                " practice_count, status, created_at, updated_at)"
+                " VALUES (?, ?, ?, ?, 'pending', ?, ?)",
+                (
+                    document["document_id"],
+                    account.user_id,
+                    topic,
+                    practice_count,
+                    now,
+                    now,
+                ),
+            )
+            return self._study_pack_view(conn, document["document_id"])
+
+    def run_study_pack(self, document_id: str) -> None:
+        """Index the PDF, then write and store both question sets.
+
+        Runs in the background. Whatever happens, the pack ends as ready or
+        failed (with a message), never stuck in progress.
+        """
+        try:
+            self._run_study_pack(document_id)
+        except Exception:
+            self._finish_pack(document_id, "failed", "Internal error.")
+            raise
+
+    def _run_study_pack(self, document_id: str) -> None:
+        with self.connection() as conn:
+            pack = conn.execute(
+                "SELECT * FROM study_packs WHERE document_id = ?", (document_id,)
+            ).fetchone()
+            if pack is None or pack["status"] != "pending":
+                return
+            self._finish_pack(document_id, "processing", None)
+
+        self.ingest_document(document_id)
+        with self.connection() as conn:
+            document = repo.fetch_document(conn, document_id)
+            assert document is not None
+            if document["status"] != "ready":
+                self._finish_pack(
+                    document_id,
+                    "failed",
+                    document["error"] or "The PDF could not be processed.",
+                )
+                return
+
+        owner_id = pack["owner_id"]
+        villains = self.campaign.villains
+        levels = [villain.target_difficulty for villain in villains]
+        practice = self._create_question_set(
+            owner_id, [document_id], QuestionMode.PRACTICE, pack["topic"],
+            pack["practice_count"], 1, 5,
+        )  # fmt: skip
+        adventure = self._create_question_set(
+            owner_id, [document_id], QuestionMode.ADVENTURE, pack["topic"],
+            len(villains) * self.rules.battle_question_count, min(levels), max(levels),
+        )  # fmt: skip
+        with self.connection() as conn, db.transaction(conn):
+            conn.execute(
+                "UPDATE study_packs SET practice_set_id = ?, adventure_set_id = ?"
+                " WHERE document_id = ?",
+                (
+                    practice["question_set_id"],
+                    adventure["question_set_id"],
+                    document_id,
+                ),
+            )
+
+        # The two sets are independent, so write them at the same time.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(self.generate_question_set, practice["question_set_id"]),
+                pool.submit(self.generate_question_set, adventure["question_set_id"]),
+            ]
+            for future in futures:
+                future.result()
+
+        with self.connection() as conn:
+            failure = self._pack_failure(
+                conn, practice["question_set_id"], adventure["question_set_id"]
+            )
+        self._finish_pack(document_id, "failed" if failure else "ready", failure)
+
+    def _pack_failure(
+        self, conn: sqlite3.Connection, practice_id: str, adventure_id: str
+    ) -> str | None:
+        """Why a finished pack is not playable, or None if it is."""
+        for set_id in (practice_id, adventure_id):
+            row = conn.execute(
+                "SELECT mode, status, error FROM question_sets WHERE id = ?", (set_id,)
+            ).fetchone()
+            if row["status"] != "ready":
+                reason = row["error"] or "unknown error"
+                return f"The {row['mode']} questions failed: {reason}"
+        # Each villain needs a question at its own difficulty (the adventure rule).
+        needed: dict[int, int] = {}
+        for villain in self.campaign.villains:
+            needed[villain.target_difficulty] = (
+                needed.get(villain.target_difficulty, 0)
+                + self.rules.battle_question_count
+            )
+        have = {
+            row["difficulty"]: row["n"]
+            for row in conn.execute(
+                "SELECT difficulty, COUNT(*) AS n FROM questions"
+                " WHERE question_set_id = ? GROUP BY difficulty",
+                (adventure_id,),
+            )
+        }
+        missing = sorted(level for level, n in needed.items() if have.get(level, 0) < n)
+        if missing:
+            return (
+                "The adventure questions are missing difficulty level(s) "
+                f"{', '.join(map(str, missing))}, which the villains need."
+            )
+        return None
+
+    def _finish_pack(self, document_id: str, status: str, error: str | None) -> None:
+        with self.connection() as conn, db.transaction(conn):
+            conn.execute(
+                "UPDATE study_packs SET status = ?, error = ?, updated_at = ?"
+                " WHERE document_id = ?",
+                (status, error, db.utc_now(), document_id),
+            )
+
+    def get_study_pack(self, account: Account, document_id: str) -> dict[str, Any]:
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT owner_id FROM study_packs WHERE document_id = ?", (document_id,)
+            ).fetchone()
+            if row is None or row["owner_id"] != account.user_id:
+                raise _not_found("study_pack")
+            return self._study_pack_view(conn, document_id)
+
+    def list_study_packs(self, account: Account) -> list[dict[str, Any]]:
+        with self.connection() as conn:
+            ids = [
+                row["document_id"]
+                for row in conn.execute(
+                    "SELECT document_id FROM study_packs WHERE owner_id = ?"
+                    " ORDER BY rowid DESC",
+                    (account.user_id,),
+                )
+            ]
+            return [self._study_pack_view(conn, document_id) for document_id in ids]
+
+    def _study_pack_view(
+        self, conn: sqlite3.Connection, document_id: str
+    ) -> dict[str, Any]:
+        pack = conn.execute(
+            "SELECT * FROM study_packs WHERE document_id = ?", (document_id,)
+        ).fetchone()
+        document = repo.fetch_document(conn, document_id)
+        assert document is not None
+
+        def set_view(set_id: str | None) -> dict[str, Any] | None:
+            if set_id is None:
+                return None
+            row = conn.execute(
+                "SELECT id, mode, status, error FROM question_sets WHERE id = ?",
+                (set_id,),
+            ).fetchone()
+            count = conn.execute(
+                "SELECT COUNT(*) FROM questions WHERE question_set_id = ?", (set_id,)
+            ).fetchone()[0]
+            return {
+                "question_set_id": row["id"],
+                "mode": row["mode"],
+                "status": row["status"],
+                "error": row["error"],
+                "question_count": count,
+            }
+
+        if pack["status"] == "failed":
+            stage = "failed"
+        elif document["status"] in ("pending", "processing"):
+            stage = "indexing"
+        elif pack["status"] == "ready":
+            stage = "done"
+        else:
+            stage = "writing_questions"
+        return {
+            "document_id": document_id,
+            "name": document["display_name"],
+            "topic": pack["topic"],
+            "status": pack["status"],
+            "stage": stage,
+            "error": pack["error"],
+            "practice": set_view(pack["practice_set_id"]),
+            "adventure": set_view(pack["adventure_set_id"]),
+            "created_at": pack["created_at"],
+            "updated_at": pack["updated_at"],
         }
 
     # --- Play ---
@@ -931,10 +1166,10 @@ class GameService:
         villain_id: str,
         question_set_id: str | None,
     ) -> tuple[QuestionRef, ...]:
-        """Prefer least-used questions closest to the villain's target difficulty.
+        """Choose the least-used question at this villain's exact difficulty.
 
-        Villains are spread across the difficulty scale in order: with three
-        villains the targets are difficulty 1, 3, and 5.
+        The ground-zero campaign has one question per encounter: difficulty 1
+        for the goblin, 3 for the troll, and 5 for the dragon finale.
         """
         rows = conn.execute(
             "SELECT q.id, q.difficulty, s.rowid AS set_order, q.position,"
@@ -945,27 +1180,26 @@ class GameService:
             " AND (? IS NULL OR s.id = ?)",
             (owner_id, question_set_id, question_set_id),
         ).fetchall()
+        target = self.campaign.villain(villain_id).target_difficulty
+        matching = [row for row in rows if row["difficulty"] == target]
         needed = self.rules.battle_question_count
-        if len(rows) < needed:
+        if len(matching) < needed:
             raise AppError(
                 409,
                 "not_enough_questions",
-                f"A battle needs {needed} adventure questions; you have "
-                f"{len(rows)}. Generate an adventure question set first.",
+                f"The {self.campaign.villain(villain_id).name} needs "
+                f"{needed} adventure question at difficulty {target}; you have "
+                f"{len(matching)}. Generate an adventure set covering "
+                "difficulties 1, 3, and 5.",
             )
-        villain_ids = self.campaign.villain_ids
-        index = villain_ids.index(villain_id)
-        span = len(villain_ids) - 1
-        target = 3 if span == 0 else 1 + round(4 * index / span)
-        rows.sort(
+        matching.sort(
             key=lambda r: (
                 r["uses"],
-                abs(r["difficulty"] - target),
                 r["set_order"],
                 r["position"],
             )
         )
-        return tuple(QuestionRef(r["id"], r["difficulty"]) for r in rows[:needed])
+        return tuple(QuestionRef(r["id"], r["difficulty"]) for r in matching[:needed])
 
     def _insert_attempt(
         self,

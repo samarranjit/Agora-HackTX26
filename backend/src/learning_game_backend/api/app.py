@@ -15,7 +15,13 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
 from learning_game_backend.api.errors import error_body, install_error_handlers
-from learning_game_backend.api.routes import auth, documents, gameplay, questions
+from learning_game_backend.api.routes import (
+    auth,
+    documents,
+    gameplay,
+    questions,
+    study_packs,
+)
 from learning_game_backend.api.schemas import ServiceHealth
 from learning_game_backend.application.game_service import GameService
 from learning_game_backend.config import GameMasterMode, Settings
@@ -26,7 +32,7 @@ from learning_game_backend.rag.protocol import GameMaster
 
 logger = logging.getLogger("learning_game_backend.api")
 
-UPLOAD_PATH = "/api/documents"
+UPLOAD_PATHS = frozenset({"/api/documents", "/api/study-packs"})
 # Room for the multipart boundary and headers around the PDF itself.
 MULTIPART_OVERHEAD_BYTES = 64 * 1024
 
@@ -99,7 +105,7 @@ def create_app(
         """Refuse oversized uploads from the Content-Length header, before the
         multipart body is received and buffered. The PDF check repeats the
         exact limit on the file itself."""
-        if request.method == "POST" and request.url.path == UPLOAD_PATH:
+        if request.method == "POST" and request.url.path in UPLOAD_PATHS:
             length = request.headers.get("content-length")
             if length is None or not length.isdigit():
                 return JSONResponse(
@@ -131,6 +137,7 @@ def create_app(
         documents.router,
         questions.router,
         gameplay.router,
+        study_packs.router,
     ):
         app.include_router(router)
     return app

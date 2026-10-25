@@ -22,7 +22,7 @@ class FullJourneyTests(ApiTestCase):
 
         # 4. Generate practice and adventure questions from that document.
         self.question_set(headers, "practice", 5, document_id)
-        self.question_set(headers, "adventure", 9, document_id)
+        self.question_set(headers, "adventure", 3, document_id)
 
         # 5. Earn enough XP to unlock the adventure (10+15+20+25+30 = 100).
         deltas = [self.practice(headers)["xp_delta"] for _ in range(5)]
@@ -42,11 +42,8 @@ class FullJourneyTests(ApiTestCase):
         self.assertEqual(first.json(), retry.json())
         self.assertEqual(self.state(headers)["xp"], 70)
 
-        # 7. Answer one question.
-        answered = self.answer(headers, first.json()["attempt"]).json()
-        self.assertTrue(answered["correct"])
-        self.assertEqual(answered["xp"], 70 + answered["xp_delta"])
-        pending = answered["next_attempt"]
+        # 7. Keep the first battle question pending across a restart.
+        pending = first.json()["attempt"]
         before = self.state(headers)
 
         # 8. Restart the backend (a brand-new app on the same data) and sign in again.
@@ -60,15 +57,16 @@ class FullJourneyTests(ApiTestCase):
         self.assertEqual(self.state(headers), before)
         self.assertEqual(guard.requests, [])  # nothing was regenerated
 
-        # 10. Finish this battle and every remaining villain.
+        # 10. Answer exactly one question for each of the three villains.
         attempt: dict[str, Any] | None = pending
         outcomes: list[str] = []
+        difficulties: list[int] = []
         while True:
-            while attempt is not None:
-                body = self.answer(headers, attempt).json()
-                attempt = body["next_attempt"]
-                if body["encounter"]["outcome"] not in ("in_progress", "none"):
-                    outcomes.append(body["encounter"]["outcome"])
+            assert attempt is not None
+            difficulties.append(attempt["difficulty"])
+            body = self.answer(headers, attempt).json()
+            self.assertIsNone(body["next_attempt"])
+            outcomes.append(body["encounter"]["outcome"])
             if len(outcomes) == 3:
                 break
             started = self.start_battle(headers)
@@ -76,6 +74,7 @@ class FullJourneyTests(ApiTestCase):
             attempt = started.json()["attempt"]
 
         self.assertEqual(outcomes, ["won", "won", "won"])
+        self.assertEqual(difficulties, [1, 3, 5])
 
         # 11. The authoritative state reports the finished adventure.
         final = self.state(headers)
