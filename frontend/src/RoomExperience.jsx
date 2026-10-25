@@ -5,12 +5,12 @@ import { createPlayerMotion } from './playerMotion.js'
 import { createSwordProp } from './swordProp.js'
 import AdventureHud from './AdventureHud.jsx'
 import { createForestScene, createCastleHallScene } from './forestScene.js'
-import { nearbyForestTarget, nearbyHallTarget, forestEncounterAt, forestGuardianAnchor, forestGuardianApproachable, speechAnchorFromProjected } from './forestLayout.js'
+import { nearbyForestTarget, nearbyHallTarget, forestEncounterAt, hallEncounterAt, forestGuardianAnchor, forestGuardianApproachable, speechAnchorFromProjected } from './forestLayout.js'
 import { getForestTarget } from './game/forestContent.js'
 import { createWalkFeel } from './walkFeel.js'
 import { createEncounterTrigger } from './game/encounterTrigger.js'
 
-export default function RoomExperience({ active, playing, session, onPause, backendStatus, player, onLeaderboard, environment = 'forest', controlRef, forestRun, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle, speechTargetId, onSpeechAnchor }) {
+export default function RoomExperience({ active, playing, session, onPause, backendStatus, player, onLeaderboard, environment = 'forest', controlRef, forestRun, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle, onPrincessWalk, onPrincessArrived, speechTargetId, onSpeechAnchor }) {
   const mountRef = useRef(null)
   const controlsRef = useRef(null)
   const propsRef = useRef({})
@@ -30,8 +30,8 @@ export default function RoomExperience({ active, playing, session, onPause, back
   }), [])
 
   useEffect(() => {
-    propsRef.current = { active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle, speechTargetId, onSpeechAnchor }
-  }, [active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle, speechTargetId, onSpeechAnchor])
+    propsRef.current = { active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle, onPrincessWalk, onPrincessArrived, speechTargetId, onSpeechAnchor }
+  }, [active, onPause, forestRun, onForestInteract, onForestBridgeLowered, onForestEnterCastle, onPrincessWalk, onPrincessArrived, speechTargetId, onSpeechAnchor])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -76,7 +76,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
     const preferenceChanged = (event) => { reducedMotion = event.matches }
     motionPreference.addEventListener('change', preferenceChanged)
     const physicalPosition = () => ({ x: camera.position.x - swayX, y: camera.position.y - bobOffset, z: camera.position.z - swayZ })
-    const forestTarget = () => forest ? nearbyForestTarget(physicalPosition(), propsRef.current.forestRun) : hall ? nearbyHallTarget(physicalPosition()) : null
+    const forestTarget = () => forest ? nearbyForestTarget(physicalPosition(), propsRef.current.forestRun) : hall ? nearbyHallTarget(physicalPosition(), propsRef.current.forestRun, room.world.princessAt) : null
     const controls = createPlayerControls({
       canvas,
       camera,
@@ -120,7 +120,8 @@ export default function RoomExperience({ active, playing, session, onPause, back
       camera.position.x -= swayX; camera.position.z -= swayZ
       bobOffset = 0; swayX = 0; swayZ = 0
       const beforeX = camera.position.x, beforeZ = camera.position.z
-      room.update(dt, { ...propsRef.current, playerPosition: motion?.position, reducedMotion, onGuardianAppear: (id) => soundRef?.current?.play(id) })
+      const feet = motion?.position
+      room.update(dt, { ...propsRef.current, playerPosition: feet ? { x: feet.x, y: feet.y + EYE_HEIGHT, z: feet.z } : physicalPosition(), reducedMotion, onGuardianAppear: (id) => soundRef?.current?.play(id) })
       controls.update(dt, propsRef.current)
       if (adventuring && controls.active) {
         const nextNearby = forestTarget()
@@ -128,7 +129,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
           lastNearby = nextNearby; setNearby(nextNearby)
           if (getForestTarget(nextNearby) && !(nextNearby === 'dragon' && propsRef.current.forestRun?.dragonDefeated)) soundRef?.current?.play('approach')
         }
-        const encounter = forest ? forestEncounterAt(physicalPosition(), propsRef.current.forestRun) : null
+        const encounter = forest ? forestEncounterAt(physicalPosition(), propsRef.current.forestRun) : hall ? hallEncounterAt(physicalPosition(), propsRef.current.forestRun) : null
         const triggered = encounterTrigger.update(encounter, forestGuardianApproachable(propsRef.current.forestRun, encounter))
         if (triggered) controls.suspend(() => propsRef.current.onForestInteract?.(triggered))
         if (forest && propsRef.current.forestRun?.bridgeState === 'lowered' && camera.position.z < -32.4 && !exited) {
@@ -146,7 +147,7 @@ export default function RoomExperience({ active, playing, session, onPause, back
         if (feel.step) soundRef?.current?.play('footstep')
       }
       const targetId = propsRef.current.speechTargetId
-      if (forest && targetId) {
+      if (targetId) {
         const world = forestGuardianAnchor(targetId, propsRef.current.forestRun?.layout)
         if (world) {
           projected.set(world.x, world.y, world.z).project(camera)

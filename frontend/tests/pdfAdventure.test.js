@@ -286,6 +286,29 @@ test('restarting the adventure clears guardians without uploading the PDF again'
   assert.equal(h.calls.filter(c=>c.method==='POST' && c.path==='/api/study-packs').length,uploads)
 })
 
+test('a leftover review does not skip the next guardian question', async () => {
+  const battleQuestion = { ...question, attempt_id: 'battle-1', question_id: 'q2', mode: 'adventure', battle: { villain_name: 'The Big Bad Wolf', question_number: 1, question_count: 1, correct_count: 0 } }
+  const h = harness({
+    override: async (path, _init, remote) => {
+      if (path === '/api/me/state') return json({ ...balances, username: body.username, xp: 100, adventure_unlocked: true, rules: { unlock_threshold: 100, battle_cost: 0 }, villains: [{ villain_id: 'bridge-troll', status: 'current' }] })
+      if (path === '/api/adventure/battles') {
+        remote.active = battleQuestion
+        return json({ ...balances, xp: 100, battle_attempt_id: 'b1', villain_name: 'The Big Bad Wolf', villain_id: 'bridge-troll', entry_cost: 0, attempt: battleQuestion }, 201)
+      }
+    },
+  })
+  await h.ready()
+  await h.session.practice()
+  await h.session.answer('B')
+  assert.equal(h.session.getSnapshot().result.correct, true)
+  assert.equal(h.session.getSnapshot().attempt, null)
+  await h.session.beginChallenge('battle', 'bridge-troll')
+  assert.equal(h.session.getSnapshot().result, null)
+  assert.equal(h.session.getSnapshot().attempt.mode, 'adventure')
+  assert.equal(h.session.getSnapshot().attempt.battle.villain_name, 'The Big Bad Wolf')
+  assert.equal(h.calls.filter((c) => c.path === '/api/adventure/battles').length, 1)
+})
+
 test('guardian target guards prevent the wolf or dragon from starting the goblin battle', async () => {
   const h=harness({override:async path=>path==='/api/me/state'?json({...balances,username:body.username,rules:{},villains:[{villain_id:'forest-goblin',status:'current'}]}):null})
   await h.ready();await h.session.battle('bridge-troll');await h.session.battle('castle-dragon')
@@ -305,6 +328,12 @@ test('HUD displays server XP and progress without inventing lives, collection or
   assert.match(html,/aria-label="XP"[^>]*aria-valuemax="100"[^>]*aria-valuenow="77"/)
   assert.match(html,/>77</);assert.match(html,/1\/3/);assert.match(html,/Leaderboard/)
   assert.match(html,/Item collection: unavailable/);assert.doesNotMatch(html,/Health|Stamina|Lives: unavailable|3 lives|550|Lifetime XP: 77/)
+})
+
+test('a completed dragon battle tells the player they saved the princess with their knowledge', () => {
+  const html = render(Encounter, { session: {}, state: { result: { ...result, encounter: { mode: 'adventure', outcome: 'won', adventure_unlocked_now: false, adventure_completed: true } } } })
+  assert.match(html, /You have saved your princess with your knowledge/)
+  assert.match(html, /dragon-victory/)
 })
 
 test('teaching is available only for item practice and only from the returned learning objective', () => {

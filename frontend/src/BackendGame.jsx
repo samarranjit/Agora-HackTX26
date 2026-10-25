@@ -34,7 +34,7 @@ export function Encounter({ session, state, item }) {
     <p><strong>{{ none: 'Practice complete', in_progress: 'Battle continues', won: 'Victory!', lost: 'Battle lost. Practice and try again.', knocked_out: 'Defeated. Practice to restore health.' }[r.encounter.outcome]}</strong></p>
     {r.encounter.question_count && <p>{r.encounter.correct_count} correct / {r.encounter.question_count} battle questions</p>}
     {r.encounter.adventure_unlocked_now && <p>Adventure is now unlocked!</p>}
-    {r.encounter.adventure_completed && <p>You completed the adventure.</p>}
+    {r.encounter.adventure_completed && <p className="dragon-victory">You have saved your princess with your knowledge.</p>}
     {(q || item) && <button className="primary full-width" disabled={state.busy || !!state.unresolved} onClick={() => { session.continue(); if (!q) session.practice() }}>{q ? 'Continue to the next question' : 'Practice another question'}</button>}
     {!q && <button className="secondary full-width" disabled={state.busy} onClick={() => session.continue()}>Finish review</button>}
   </div>

@@ -107,6 +107,12 @@ export function createGameSession({ baseUrl, fetchImpl, timeoutMs } = {}) {
       return await refresh()
     }),
     practice: () => snapshot.attempt ? Promise.resolve(snapshot.attempt) : begin('practice', '/api/practice/attempts', { question_set_id: snapshot.pack?.practice.question_set_id }, false),
+    beginChallenge(kind, villainId) {
+      if (snapshot.result) publish({ result: null, error: null })
+      if (snapshot.unresolved) return Promise.resolve(null)
+      if (snapshot.attempt) return Promise.resolve(snapshot.attempt)
+      return kind === 'battle' ? this.battle(villainId) : this.practice()
+    },
     battle: (villainId) => {
       const current = snapshot.player?.villains?.find((v) => v.status === 'current')?.villain_id
       if (villainId && current && current !== villainId) return exclusive(() => { throw new Error('This guardian is not available yet. Finish the current guardian first.') })

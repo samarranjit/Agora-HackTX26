@@ -126,13 +126,41 @@ export function createBigBadWolf() {
 
 export function createStoryPrincess() {
   const root = new THREE.Group(); root.name = 'Storywood Princess'
-  const put = sculptor(root, { gown: 0xe2a1ca, trim: 0xffe4bd, skin: 0xf3cfb1, hair: 0x8b533f, gold: 0xf3ca70, eye: 0x3c3249 })
-  put('cone', 'gown', [0, 0.75, 0], [0.75, 1.5, 0.75])
-  put('orb', 'trim', [0, 1.35, 0.05], [0.35, 0.5, 0.3])
-  put('orb', 'hair', [0, 2, -0.08], [0.43, 0.5, 0.35])
-  put('orb', 'skin', [0, 2.02, 0.12], [0.32, 0.36, 0.25])
-  for (const side of [-1, 1]) { put('orb', 'gown', [side * 0.4, 1.5, 0], [0.23, 0.22, 0.23]); put('cylinder', 'skin', [side * 0.49, 1.17, 0.07], [0.09, 0.5, 0.09], [0, 0, side * 0.14]); put('orb', 'eye', [side * 0.12, 2.05, 0.35], [0.035, 0.045, 0.025]) }
-  put('cylinder', 'gold', [0, 2.37, 0], [0.36, 0.15, 0.36])
-  for (let i = 0; i < 5; i++) { const angle = i * Math.PI * 2 / 5; put('cone', 'gold', [Math.sin(angle) * 0.29, 2.56, Math.cos(angle) * 0.29], [0.09, 0.35, 0.09]) }
-  return root
+  const body = new THREE.Group(); body.name = 'princess-body'; root.add(body)
+  const skirt = new THREE.Group(); skirt.name = 'princess-skirt'; root.add(skirt)
+  const leftLeg = new THREE.Group(); leftLeg.name = 'princess-leg-left'; leftLeg.position.set(-0.15, 0.42, 0); root.add(leftLeg)
+  const rightLeg = new THREE.Group(); rightLeg.name = 'princess-leg-right'; rightLeg.position.set(0.15, 0.42, 0); root.add(rightLeg)
+  const put = sculptor(root, { gown: 0xe2a1ca, silk: 0xf0c0d8, trim: 0xffe4bd, skin: 0xf3cfb1, hair: 0x8b533f, gold: 0xf3ca70, eye: 0x3c3249, shoe: 0x8b3d5b })
+  put('cone', 'gown', [0, 0.82, 0], [0.72, 1.28, 0.72], [0, 0, 0], skirt)
+  put('orb', 'silk', [0, 0.62, 0.08], [0.58, 0.18, 0.5], [0, 0, 0], skirt)
+  put('orb', 'trim', [0, 1.42, 0.05], [0.34, 0.42, 0.28], [0, 0, 0], body)
+  put('orb', 'hair', [0, 2.06, -0.08], [0.43, 0.5, 0.35], [0, 0, 0], body)
+  put('orb', 'skin', [0, 2.08, 0.12], [0.32, 0.36, 0.25], [0, 0, 0], body)
+  for (const side of [-1, 1]) {
+    put('orb', 'gown', [side * 0.4, 1.52, 0], [0.22, 0.2, 0.22], [0, 0, 0], body)
+    put('cylinder', 'skin', [side * 0.49, 1.2, 0.07], [0.09, 0.48, 0.09], [0, 0, side * 0.14], body)
+    put('orb', 'eye', [side * 0.12, 2.1, 0.35], [0.035, 0.045, 0.025], [0, 0, 0], body)
+    const leg = side < 0 ? leftLeg : rightLeg
+    put('cylinder', 'skin', [0, -0.16, 0], [0.075, 0.38, 0.075], [0, 0, 0], leg)
+    put('orb', 'shoe', [0, -0.38, 0.07], [0.09, 0.06, 0.16], [0, 0, 0], leg)
+  }
+  put('cylinder', 'gold', [0, 2.42, 0], [0.36, 0.15, 0.36], [0, 0, 0], body)
+  for (let i = 0; i < 5; i++) { const angle = i * Math.PI * 2 / 5; put('cone', 'gold', [Math.sin(angle) * 0.29, 2.6, Math.cos(angle) * 0.29], [0.09, 0.35, 0.09], [0, 0, 0], body) }
+  return {
+    root,
+    update(time, walking = false) {
+      const step = walking ? Math.sin(time * 7.4) : 0
+      const sway = walking ? Math.sin(time * 3.7) : 0
+      leftLeg.rotation.x = step * 0.62
+      rightLeg.rotation.x = -step * 0.62
+      leftLeg.position.y = 0.42 + Math.max(0, step) * 0.08
+      rightLeg.position.y = 0.42 + Math.max(0, -step) * 0.08
+      skirt.rotation.y = sway * 0.1
+      skirt.position.z = step * 0.05
+      skirt.position.x = sway * 0.04
+      body.position.y = Math.abs(step) * 0.07
+      body.position.x = sway * 0.035
+      body.rotation.y = sway * 0.06
+    },
+  }
 }

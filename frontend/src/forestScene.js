@@ -4,7 +4,7 @@ import { buildPalace } from './palaceArchitecture.js'
 import { disposeScene } from './sceneResources.js'
 import { createFairytaleItem, createStoryDragon, createBigBadWolf, createStoryPrincess } from './storybookProps.js'
 import { FOREST_COLLECTIBLES } from './game/forestContent.js'
-import { createForestWorld, createHallWorld, FOREST_PATH, DEFAULT_FOREST_LAYOUT, forestHeight, pathX, HALL, HALL_FLOOR, hallHeight, forestEncounterRange } from './forestLayout.js'
+import { createForestWorld, createHallWorld, FOREST_PATH, DEFAULT_FOREST_LAYOUT, FOREST_GUARDIAN_BODY, forestHeight, pathX, HALL, HALL_FLOOR, hallGround, hallHeight, forestEncounterRange } from './forestLayout.js'
 import { createMagicEffects } from './magicEffects.js'
 import { createForestGoblin } from './forestGoblin.js'
 
@@ -196,7 +196,7 @@ export function createForestScene({ spawnId = 'start', layout = DEFAULT_FOREST_L
         const defeated = !!forestRun?.defeatedEnemyIds.includes(enemy.id)
         const summonable = !!forestRun?.summonableEnemyIds?.includes(enemy.id)
         const ground = height(enemy.x, enemy.z)
-        const near = forestEncounterRange(playerPosition, enemy, forestRun?.layout)
+        const near = forestEncounterRange(playerPosition, enemy, layout)
         if (summonable && near && !enemy.revealed) {
           enemy.revealed = true
           enemy.pop = reducedMotion ? 1 : 0
@@ -257,6 +257,7 @@ export function createForestScene({ spawnId = 'start', layout = DEFAULT_FOREST_L
         }
         enemy.model.root.visible = !!forestRun && enemy.burn < 0.55
       })
+      world.setGuardianBlockers(enemies.filter((enemy) => enemy.model.root.visible).map((enemy) => ({ x: enemy.x, z: enemy.z, ...FOREST_GUARDIAN_BODY[enemy.id] })))
       if (!initialized && forestRun?.bridgeState === 'lowered') announced = true
       if (forestRun) initialized = true
       moteTime += dt
@@ -352,26 +353,77 @@ export function createCastleHallScene() {
   scene.add(key, key.target)
   for (const z of [40, -15, -60]) { const light = new THREE.PointLight(0xffbb77, 300, 75, 1.4); light.position.set(9, HALL_FLOOR + 14, z); scene.add(light) }
   const dragon = createStoryDragon(); dragon.root.position.set(HALL.dragon.x, HALL_FLOOR + hallHeight(HALL.dragon.x, HALL.dragon.z), HALL.dragon.z); dragon.root.scale.setScalar(HALL.dragon.scale); scene.add(dragon.root)
-  const princess = createStoryPrincess(); princess.position.set(HALL.princess.x, HALL_FLOOR + 4, HALL.princess.z); princess.scale.setScalar(1.8); scene.add(princess)
-  const effects = createMagicEffects(scene, 64)
+  const princess = createStoryPrincess(); princess.root.position.set(HALL.princess.x, hallGround(HALL.princess.x, HALL.princess.z), HALL.princess.z); princess.root.scale.setScalar(1.8); scene.add(princess.root)
+  const effects = createMagicEffects(scene, 180)
   let elapsed = 0, disposed = false, entered = false, won = false, emberClock = 0
+  let burn = 0, ember = 0, walk = 0, guitar = 0, arrived = false
   const mouth = new THREE.Vector3()
   const world = createHallWorld()
-  return { scene, world, spawn: world.spawn, update(dt, { forestRun, reducedMotion = false } = {}) {
+  const placePrincess = (x, z) => {
+    princess.root.position.set(x, hallGround(x, z), z)
+    world.setPrincessAt({ x, z })
+  }
+  return { scene, world, spawn: world.spawn, update(dt, { forestRun, playerPosition, reducedMotion = false, onPrincessWalk, onPrincessArrived } = {}) {
     if (disposed) return
     world.setDragonDefeated(forestRun?.dragonDefeated)
     // The server unlocks collision immediately; bars retract fully in the same
     // frame to avoid a visually closed gate with an already open passage.
     prisonGate.position.y = HALL_FLOOR + (forestRun?.dragonDefeated ? 17 : 3)
     elapsed += dt
-    if (!entered) { entered = true; won = !!forestRun?.dragonDefeated; effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 6, z: HALL.dragon.z + 3 }, { count: 12, color: 0xbba2df, reducedMotion }) }
-    if (forestRun?.dragonDefeated && !won) { won = true; effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 7, z: HALL.dragon.z + 3 }, { count: 30, color: 0xffda89, reducedMotion }) }
-    dragon.update(reducedMotion ? 0 : elapsed, forestRun?.dragonDefeated)
+    if (!entered) {
+      entered = true
+      won = !!forestRun?.dragonDefeated
+      if (won) { dragon.root.visible = false; dragon.root.scale.setScalar(0); burn = 1; world.setDragonGone(true) }
+      effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 6, z: HALL.dragon.z + 3 }, { count: 12, color: 0xbba2df, reducedMotion })
+    }
+    if (forestRun?.dragonDefeated && !won) {
+      won = true
+      world.setDragonGone(true)
+      burn = reducedMotion ? 1 : 0
+      ember = 0
+      igniteGuardian(dragon.root)
+      effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 6, z: HALL.dragon.z + 3 }, { count: 36, color: 0xff7a1a, flame: true, reducedMotion })
+      effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 8, z: HALL.dragon.z + 2 }, { count: 28, color: 0xffd24a, flame: true, reducedMotion })
+      effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 9, z: HALL.dragon.z + 3 }, { count: 22, color: 0xffda89, reducedMotion })
+    }
+    if (won && burn < 1) {
+      burn = Math.min(1, burn + dt / 0.38)
+      ember += dt
+      const t = burn
+      dragon.root.scale.setScalar(Math.max(0, HALL.dragon.scale * (1 - t * 2.4)))
+      heatGuardian(dragon.root, t)
+      if (!reducedMotion && t < 0.7 && ember > 0.04) {
+        ember = 0
+        effects.burst({ x: HALL.dragon.x, y: HALL_FLOOR + 5 + t * 2, z: HALL.dragon.z + 2 }, { count: 12, color: t > 0.35 ? 0xfff1a0 : 0xff5a12, flame: true })
+      }
+    }
+    dragon.root.visible = !won || burn < 0.55
+    if (!won) dragon.update(reducedMotion ? 0 : elapsed, false)
     emberClock += dt
-    if (!reducedMotion && dragon.state.heat > 0.3 && emberClock > 0.1) {
+    if (!won && !reducedMotion && dragon.state.heat > 0.3 && emberClock > 0.1) {
       emberClock = 0
       dragon.mouth(mouth)
       effects.burst({ x: mouth.x, y: mouth.y, z: mouth.z }, { count: 3, color: 0xffb04a, flame: true })
+    }
+    const greeting = playerPosition || { x: 0, z: -36 }
+    if (won) {
+      const dx = greeting.x - princess.root.position.x, dz = greeting.z - princess.root.position.z
+      const reach = Math.hypot(dx, dz)
+      if (reach > 2.3) {
+        const speed = reducedMotion ? 14 : 3.8
+        const step = Math.min(reach, speed * dt)
+        placePrincess(princess.root.position.x + dx / reach * step, princess.root.position.z + dz / reach * step)
+        princess.root.rotation.y = Math.atan2(dx, dz)
+        walk += dt
+        princess.update(reducedMotion ? 0 : walk, !reducedMotion)
+        guitar += dt
+        if (guitar === dt || guitar > 3.2) { guitar = guitar > 3.2 ? guitar - 3.2 : guitar; onPrincessWalk?.() }
+      } else {
+        princess.update(reducedMotion ? 0 : elapsed, false)
+        if (!arrived) { arrived = true; onPrincessArrived?.() }
+      }
+    } else {
+      princess.update(reducedMotion ? 0 : elapsed, false)
     }
     effects.update(dt, reducedMotion)
   }, dispose() { if (!disposed) { disposed = true; effects.dispose(); disposeScene(scene) } } }
