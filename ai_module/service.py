@@ -160,7 +160,10 @@ class GeminiEngine:
                     raise
                 busy = exc
                 self._resting[model] = time.monotonic() + MODEL_COOLDOWN_SECONDS
-                logger.warning("Gemini model %s is overloaded or unavailable (%s); resting it and trying the next one", model, type(exc).__name__)
+                logger.warning(
+                    "Gemini model %s is overloaded or unavailable (%s, status %s: %.300s); resting it and trying the next one",
+                    model, type(exc).__name__, getattr(exc, "status_code", None) or getattr(exc, "code", None), exc,
+                )
                 continue
             if model != MODELS[0]:
                 logger.info("Questions were written by the fallback model %s", model)
