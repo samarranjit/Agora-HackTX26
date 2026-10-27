@@ -1,0 +1,36 @@
+# Render Blueprint for the backend API (Dashboard → New → Blueprint).
+# The image is built from the repository root because the backend depends on
+# ../Game_Engine. Secrets are marked `sync: false`: Render asks for them on the
+# first deploy and never reads them from this file.
+services:
+  - type: web
+    name: learning-game-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /healthz
+    # Only rebuild when the backend or the engine changes.
+    buildFilter:
+      paths:
+        - backend/**
+        - Game_Engine/**
+    envVars:
+      # disabled | http | fake. With http, also set GAME_MASTER_URL and the key.
+      - key: GAME_MASTER_MODE
+        value: disabled
+      - key: GAME_MASTER_URL
+        sync: false
+      - key: GAME_MASTER_API_KEY
+        sync: false
+      - key: GAME_MASTER_TIMEOUT_SECONDS
+        value: "300"
+      # Exact frontend origins, comma-separated, e.g. https://your-app.onrender.com
+      - key: LEARNING_GAME_CORS_ORIGINS
+        sync: false
+    # The free plan has no persistent disk, so the SQLite database and uploaded
+    # PDFs in /data are lost on every deploy or restart. On a paid plan, uncomment:
+    # disk:
+    #   name: data
+    #   mountPath: /data
+    #   sizeGB: 1

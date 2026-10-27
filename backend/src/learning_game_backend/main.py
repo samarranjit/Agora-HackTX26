@@ -3,6 +3,7 @@
 import argparse
 import json
 import logging
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -25,7 +26,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     serve = commands.add_parser("serve", help="run the API server")
     serve.add_argument("--host", default="127.0.0.1")
-    serve.add_argument("--port", type=int, default=8000)
+    # Hosts such as Render choose the port and pass it in $PORT.
+    serve.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)))
     commands.add_parser("migrate", help="create or upgrade the database")
     openapi = commands.add_parser("openapi", help="write the OpenAPI document")
     openapi.add_argument("output", type=Path, help="file to write, e.g. openapi.json")

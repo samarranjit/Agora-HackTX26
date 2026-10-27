@@ -25,6 +25,10 @@ In `.env` (git-ignored): `GAME_MASTER_MODE=http`, `GAME_MASTER_URL` (the port `a
 
 For a free ngrok tunnel the API allows the `ngrok-skip-browser-warning` header in CORS.
 
+### Deploy on Render
+
+[`render.yaml`](../render.yaml) at the repository root is a Render Blueprint (Dashboard → New → Blueprint). It builds `backend/Dockerfile` from the repository root, checks `/healthz`, and asks for `GAME_MASTER_URL`, `GAME_MASTER_API_KEY` and `LEARNING_GAME_CORS_ORIGINS` on the first deploy. `serve` listens on `$PORT` when it is set. The free plan has no disk, so data in `/data` is lost on each deploy.
+
 Commands: `serve`, `migrate`, `openapi FILE`. Package name remains `learning-game-backend`; CLI remains `learning-game-api`.
 
 ```sh

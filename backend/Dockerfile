@@ -35,11 +35,13 @@ ENV PATH="/app/backend/.venv/bin:${PATH}" \
     LEARNING_GAME_DATA_DIR=/data
 
 USER app
-VOLUME ["/data"]
+# No VOLUME instruction: some hosts (Render, Railway) reject or ignore it.
+# Mount a persistent disk at /data instead (docker run -v, or a Render disk).
 EXPOSE 8000
 
 # Secrets and settings come from the environment at run time, never from the image.
+# The port comes from $PORT (Render sets it), defaulting to 8000.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).status == 200 else 1)"]
+    CMD ["python", "-c", "import os,urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:%s/healthz' % os.environ.get('PORT', '8000'), timeout=2).status == 200 else 1)"]
 
-CMD ["learning-game-api", "serve", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["learning-game-api", "serve", "--host", "0.0.0.0"]
