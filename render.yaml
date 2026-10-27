@@ -28,9 +28,34 @@ services:
       # Exact frontend origins, comma-separated, e.g. https://your-app.onrender.com
       - key: LEARNING_GAME_CORS_ORIGINS
         sync: false
+    # Set GAME_MASTER_MODE=http and GAME_MASTER_URL to the game master's public URL
+    # (https://learning-game-ai.onrender.com) to turn on PDF uploads.
     # The free plan has no persistent disk, so the SQLite database and uploaded
     # PDFs in /data are lost on every deploy or restart. On a paid plan, uncomment:
     # disk:
     #   name: data
     #   mountPath: /data
     #   sizeGB: 1
+
+  # The game master (ai_module): reads PDFs with Gemini and writes the questions.
+  # Runs from the repository root because the code is the `ai_module` package.
+  - type: web
+    name: learning-game-ai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r ai_module/requirements.txt
+    startCommand: python -m ai_module.service
+    healthCheckPath: /healthz
+    buildFilter:
+      paths:
+        - ai_module/**
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.12
+      - key: RAG_HOST
+        value: 0.0.0.0
+      - key: GEMINI_API_KEY
+        sync: false
+      # The same secret as the backend's GAME_MASTER_API_KEY.
+      - key: RAG_API_KEY
+        sync: false

@@ -528,7 +528,8 @@ def main() -> None:
         "ai_module.service:create_app_from_env",
         factory=True,
         host=os.environ.get("RAG_HOST", "127.0.0.1"),
-        port=int(os.environ.get("RAG_PORT", "9000")),
+        # Hosts such as Render choose the port and pass it in $PORT.
+        port=int(os.environ.get("RAG_PORT") or os.environ.get("PORT") or "9000"),
     )
 
 
