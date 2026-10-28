@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { AppState, BackHandler, Text, View } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import Animated, { FadeOut, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
 import GameView from './GameView.js'
 import PalaceDialog from './PalaceDialog.js'
 import PdfLanding from './PdfLanding.js'
 import CharacterSpeech from './CharacterSpeech.js'
-import SoundControl, { SoundContext } from './SoundControl.js'
+import { SoundContext } from './SoundControl.js'
+import { JourneySummary, StatusPill } from './AdventureHud.js'
 import { AuthScreen, Encounter, Recovery, ServerError } from './BackendGame.js'
-import { Body, Button, SmallPrint, Title } from './primitives.js'
+import { ActionRow, Body, Button, Columns, SmallPrint, Title } from './primitives.js'
 import { colors, fonts, useScreen } from './theme.js'
 import { createPdfAdventure } from '../api/pdfAdventure.js'
 import { createForestView } from '../game/forestView.js'
@@ -29,33 +29,29 @@ export function TryAgainBanner() {
   </Animated.View>
 }
 
-function TopBar({ onPause }) {
-  const { s, edge, compact } = useScreen()
-  return <Animated.View exiting={FadeOut.duration(120)} pointerEvents="box-none" className="absolute left-0 right-0 top-0" style={{ zIndex: 20 }}>
-    <LinearGradient pointerEvents="none" colors={['rgba(24,34,52,0.7)', 'rgba(24,34,52,0)']} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: edge.top + s(72) }} />
-    <View pointerEvents="box-none" className="flex-row items-center justify-between" style={{ paddingTop: edge.top + s(4), paddingLeft: edge.left, paddingRight: edge.right, gap: s(12) }}>
-      <View pointerEvents="none" className="flex-row items-center" style={{ gap: s(10) }}>
-        {!compact && <View className="items-center justify-center border" style={{ width: s(34), height: s(40), borderRadius: s(14), borderBottomLeftRadius: s(17), borderBottomRightRadius: s(17), borderColor: 'rgba(229,188,120,0.53)', backgroundColor: 'rgba(49,48,71,0.7)' }}>
-          <Text style={{ fontSize: s(24), color: colors.text }}>♜</Text>
-        </View>}
-        <View>
-          <Text style={{ fontFamily: fonts.serif, fontSize: s(compact ? 18 : 21), color: colors.text }}>Memory Palace</Text>
-          <Text style={{ fontSize: s(8), letterSpacing: s(1.8), color: '#f6dfb8' }}>THE STORYWOOD</Text>
-        </View>
-      </View>
-      <View className="flex-row items-center" style={{ gap: s(8) }}>
-        <SoundControl />
-        <Tap accessibilityRole="button" accessibilityLabel="Pause" onPress={onPause} hitSlop={8} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', borderWidth: 1, gap: s(8), paddingHorizontal: s(13), paddingVertical: s(8), borderRadius: s(9), backgroundColor: 'rgba(32,42,59,0.85)', borderColor: 'rgba(236,213,169,0.27)', opacity: pressed ? 0.8 : 1 })}>
-          <Text style={{ color: colors.goldSoft, fontSize: s(12), fontWeight: '800' }}>❚❚</Text>
-          <Text className="font-bold text-parchment" style={{ fontSize: s(12) }}>Pause</Text>
-        </Tap>
-      </View>
+function IconButton({ glyph, label, onPress, active = true }) {
+  const { s } = useScreen()
+  const size = s(38)
+  return <Tap accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} style={({ pressed }) => ({ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, backgroundColor: 'rgba(25,40,48,0.62)', borderColor: 'rgba(236,213,169,0.3)', opacity: pressed ? 0.75 : 1 })}>
+    <Text style={{ color: active ? colors.goldSoft : 'rgba(232,206,149,0.5)', fontSize: s(15), fontWeight: '800', textDecorationLine: active ? 'none' : 'line-through' }}>{glyph}</Text>
+  </Tap>
+}
+
+// Minimal play-time chrome: a status pill on the left, sound and pause icons on the right.
+function TopBar({ onPause, onStatus, backendStatus, player }) {
+  const { s, edge } = useScreen()
+  const sound = useContext(SoundContext)
+  return <Animated.View exiting={FadeOut.duration(120)} pointerEvents="box-none" className="absolute left-0 right-0 top-0 flex-row items-center justify-between" style={{ zIndex: 20, paddingTop: edge.top + s(2), paddingLeft: edge.left, paddingRight: edge.right }}>
+    <StatusPill backendStatus={backendStatus} player={player} onPress={onStatus} />
+    <View className="flex-row items-center" style={{ gap: s(8) }}>
+      {sound && <IconButton glyph="♫" active={!sound.muted} label={sound.muted ? 'Unmute sound' : 'Mute sound'} onPress={sound.toggle} />}
+      <IconButton glyph="❚❚" label="Pause" onPress={onPause} />
     </View>
   </Animated.View>
 }
 
 export default function ForestJourney({ flow: suppliedFlow }) {
-  const { s, edge, width } = useScreen()
+  const { s, edge } = useScreen()
   const [flow] = useState(() => suppliedFlow || createPdfAdventure())
   const state = useSyncExternalStore(flow.subscribe, flow.getSnapshot, flow.getSnapshot)
   const server = useSyncExternalStore(flow.session.subscribe, flow.session.getSnapshot, flow.session.getSnapshot)
@@ -143,57 +139,68 @@ export default function ForestJourney({ flow: suppliedFlow }) {
   }
   const item = challenge && challenge.packId === packId && getForestTarget(challenge.id)?.kind === 'collectible' ? getForestTarget(challenge.id) : null
   const speechId = challenge?.packId === packId && overlay === 'question' && usesCharacterSpeech(challenge.id) ? challenge.id : null
-  const questionBody = <>
-    {item && server.attempt?.mode !== 'adventure' && <SmallPrint style={{ marginTop: 0, marginBottom: s(8) }}>Study beside {item.name}. Item collection challenges are not available yet.</SmallPrint>}
-    <Encounter session={flow.session} state={server} item={item} />
-    <ServerError error={server.error} />
-    <Recovery session={flow.session} state={server} onRetry={() => { const target = challenge?.packId === packId && getForestTarget(challenge?.id); if (target && !server.attempt && !server.result) askQuestion(target.kind === 'combat' ? 'battle' : 'practice', target.id); else flow.session.refresh() }} />
-    <Button full label="Return to the adventure" onPress={resume} />
-    <Button full disabled={server.busy} label="Restart" onPress={startOver} />
-  </>
-  const topInset = edge.top + s(50)
+  const questionBody = <Encounter session={flow.session} state={server} item={item}
+    note={item && server.attempt?.mode !== 'adventure' ? <SmallPrint style={{ marginTop: 0, marginBottom: s(6), fontSize: s(11), lineHeight: s(15) }}>Study beside {item.name}. Item collection challenges are not available yet.</SmallPrint> : null}
+    footer={<>
+      <ServerError error={server.error} />
+      <Recovery session={flow.session} state={server} onRetry={() => { const target = challenge?.packId === packId && getForestTarget(challenge?.id); if (target && !server.attempt && !server.result) askQuestion(target.kind === 'combat' ? 'battle' : 'practice', target.id); else flow.session.refresh() }} />
+    </>}
+    actions={[<Button key="return" compact label="Return to the adventure" onPress={resume} />, <Button key="restart" compact disabled={server.busy} label="Restart" onPress={startOver} />]} />
+  const topInset = edge.top + s(46)
   const sound = { muted, toggle: () => { soundRef.current?.setMuted(!muted); setMuted(!muted) } }
   const defeated = server.player?.villains?.filter((v) => v.status === 'completed').length || 0
   return <SoundContext.Provider value={sound}>
     <View className="flex-1" style={{ backgroundColor: colors.storywood }} onTouchStart={() => soundRef.current?.unlock({ isTrusted: true })}>
-      <GameView key={scenery.runId + ':' + view.stage + ':' + (ready ? packId : 'opening') + ':' + runToken} controlRef={controls} environment={view.stage} session={scenery.runId} forestRun={view} backendStatus={server.status} player={server.player} playing={ready} onLeaderboard={() => setOverlay('leaderboard')} active={ready && !overlay && !tryAgain} soundRef={soundRef} onPause={pause} onForestInteract={interact} speechTargetId={speechId} onSpeechAnchor={setSpeechAnchor} topInset={topInset} hudRight={!!overlay && !speechId && width >= 760}
+      <GameView key={scenery.runId + ':' + view.stage + ':' + (ready ? packId : 'opening') + ':' + runToken} controlRef={controls} environment={view.stage} session={scenery.runId} forestRun={view} backendStatus={server.status} player={server.player} playing={ready} onLeaderboard={() => setOverlay('leaderboard')} active={ready && !overlay && !tryAgain} soundRef={soundRef} onPause={pause} onForestInteract={interact} speechTargetId={speechId} onSpeechAnchor={setSpeechAnchor} topInset={topInset} 
         onForestBridgeLowered={() => { if (flow.session.getSnapshot().status?.adventure_unlocked) updateWorld({ bridgeState: 'lowered' }) }}
         onForestEnterCastle={() => { if (flow.session.getSnapshot().status?.adventure_unlocked && view.bridgeState === 'lowered') { updateWorld({ stage: 'castle', checkpoint: { id: 'castle', name: 'Castle entrance', position: CASTLE_APPROACH } }); setOverlay('arrival'); soundRef.current?.play('castle') } }}
         onPrincessWalk={() => soundRef.current?.play('guitar')}
         onPrincessArrived={() => { soundRef.current?.play('victory'); if (overlay !== 'question') setOverlay('rescue') }} />
-      {ready && !overlay && !tryAgain && <TopBar onPause={pause} />}
+      {ready && !overlay && !tryAgain && <TopBar onPause={pause} onStatus={() => setOverlay('leaderboard')} backendStatus={server.status} player={server.player} />}
       {state.phase === 'auth' && <AuthScreen flow={flow} state={state} busy={server.busy} />}
       {!ready && state.phase !== 'auth' && <PdfLanding state={state} onSelect={flow.select} onRetry={flow.retry} onSelectPack={flow.selectPack} onRefresh={flow.loadLibrary} />}
       {ready && tryAgain && <TryAgainBanner />}
       {ready && !tryAgain && overlay === 'question' && speechId && <CharacterSpeech key={server.attempt?.attempt_id || challenge.id} title={server.attempt?.battle?.villain_name || getForestTarget(speechId)?.name || 'A story to remember'} anchor={speechAnchor} onClose={resume}>{questionBody}</CharacterSpeech>}
-      {ready && !tryAgain && overlay === 'question' && !speechId && <PalaceDialog key={server.attempt?.attempt_id || 'review'} title={server.attempt?.battle?.villain_name || item?.name || 'A story to remember'} onClose={resume}>{questionBody}</PalaceDialog>}
-      {ready && !tryAgain && overlay && overlay !== 'question' && <PalaceDialog title={{ pause: 'Take a breath.', gate: 'The Storywood drawbridge', arrival: 'The royal hall', princess: 'The Storywood Princess', rescue: 'The princess is free', leaderboard: 'All-time leaderboard' }[overlay]} onClose={resume}>
+      {ready && !tryAgain && overlay === 'question' && !speechId && <PalaceDialog wide key={server.attempt?.attempt_id || 'review'} title={server.attempt?.battle?.villain_name || item?.name || 'A story to remember'} onClose={resume}>{questionBody}</PalaceDialog>}
+      {ready && !tryAgain && overlay && overlay !== 'question' && <PalaceDialog narrow={!['pause', 'princess'].includes(overlay)} title={{ pause: 'Take a breath.', gate: 'The Storywood drawbridge', arrival: 'The royal hall', princess: 'The Storywood Princess', rescue: 'The princess is free', leaderboard: 'All-time leaderboard' }[overlay]} onClose={resume}>
         {overlay === 'pause' && <>
-          <Body muted>Left thumb moves · right thumb looks · push the stick to its edge to sprint · Jump and ✦ Interact sit under your right thumb.</Body>
-          <ServerError error={server.error} />
-          {(server.attempt || server.result || server.unresolved) && <Button full label="Continue" onPress={() => setOverlay('question')} />}
-          <Button full disabled={server.busy} label="Restart" onPress={startOver} />
-          {server.status?.health === 0 && !server.attempt && !server.result && <Button full label="Recall a story to restore strength" onPress={() => askQuestion('practice')} />}
-          <Button full disabled={server.busy || !!server.unresolved} label="Return to study sets" onPress={flow.openLibrary} />
+          <Columns ratio={1.1}
+            left={<View style={{ gap: s(8) }}>
+              <JourneySummary backendStatus={server.status} player={server.player} />
+              <Body muted style={{ fontSize: s(12), lineHeight: s(17) }}>Left thumb moves · right thumb looks · push the stick to its edge to sprint · Jump and ✦ Interact sit under your right thumb.</Body>
+            </View>}
+            right={<View>
+              <ServerError error={server.error} />
+              {(server.attempt || server.result || server.unresolved) && <Button compact style={{ marginBottom: s(8) }} label="Continue" onPress={() => setOverlay('question')} />}
+              <Button variant="primary" compact label="Return to the adventure" onPress={resume} />
+              <Button full compact disabled={server.busy} label="Restart" onPress={startOver} />
+              {server.status?.health === 0 && !server.attempt && !server.result && <Button full compact label="Recall a story to restore strength" onPress={() => askQuestion('practice')} />}
+              <Button full compact disabled={server.busy || !!server.unresolved} label="Return to study sets" onPress={flow.openLibrary} />
+              <Button full compact label="Leaderboard" onPress={() => setOverlay('leaderboard')} />
+            </View>} />
         </>}
         {overlay === 'gate' && <Body>{server.status?.adventure_unlocked ? view.bridgeState === 'lowered' ? 'The castle is open. Follow the bridge.' : 'Wait for the drawbridge to finish lowering.' : 'Recall stories from your PDF to unlock the castle.'}</Body>}
         {overlay === 'arrival' && <Body>Explore the east observatory and west library through the side arches. Follow the royal carpet past the dragon to the prison wing. Its bars open only after the dragon is defeated.</Body>}
-        {overlay === 'princess' && <>
-          <Body>{server.status?.adventure_completed ? 'You have saved your princess with your knowledge.' : 'The dragon still guards the prison. Defeat the remaining guardians to open its gates.'}</Body>
-          {server.status?.adventure_completed && <>
-            <Title size={22} style={{ marginTop: s(14) }}>The princess is free</Title>
-            <Body>{server.status.xp} XP · {defeated} guardians defeated</Body>
-            <SmallPrint>A new campaign is not available yet. Lifetime XP and global rank are unavailable.</SmallPrint>
-            <Button full label="View leaderboard" onPress={() => setOverlay('leaderboard')} />
-            <Button variant="primary" full disabled={server.busy || !!server.unresolved} label="Return to study sets" onPress={flow.openLibrary} />
-          </>}
-        </>}
+        {overlay === 'princess' && (server.status?.adventure_completed
+          ? <Columns
+              left={<View style={{ gap: s(6) }}>
+                <Body>You have saved your princess with your knowledge.</Body>
+                <Title size={20} style={{ marginTop: s(4), marginBottom: 0 }}>The princess is free</Title>
+                <Body>{server.status.xp} XP · {defeated} guardians defeated</Body>
+                <SmallPrint style={{ marginTop: s(2) }}>A new campaign is not available yet. Lifetime XP and global rank are unavailable.</SmallPrint>
+              </View>}
+              right={<View>
+                <Button variant="primary" compact disabled={server.busy || !!server.unresolved} label="Return to study sets" onPress={flow.openLibrary} />
+                <Button full compact label="View leaderboard" onPress={() => setOverlay('leaderboard')} />
+                <Button full compact label="Return to the adventure" onPress={resume} />
+              </View>} />
+          : <Body>The dragon still guards the prison. Defeat the remaining guardians to open its gates.</Body>)}
         {overlay === 'rescue' && <Text className="text-goldsoft" style={{ fontFamily: fonts.serif, fontSize: s(18), lineHeight: s(26) }}>You have saved your princess with your knowledge.</Text>}
-        {overlay === 'leaderboard' && <View style={{ gap: s(10) }}>
+        {overlay === 'leaderboard' && <View style={{ gap: s(8) }}>
           <Body>The all-time leaderboard is not available yet.</Body>
           <Body>Your current adventure balance is {server.status?.xp} XP. Lifetime XP and global rank are unavailable.</Body>
         </View>}
-        <Button variant="primary" full label="Return to the adventure" onPress={resume} />
+        {!(overlay === 'pause' || overlay === 'princess' && server.status?.adventure_completed) && <Button variant="primary" full compact label="Return to the adventure" onPress={resume} />}
       </PalaceDialog>}
     </View>
   </SoundContext.Provider>
