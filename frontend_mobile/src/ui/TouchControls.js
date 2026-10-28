@@ -9,11 +9,11 @@ import { colors, useScreen } from './theme.js'
 // Right thumb: drag anywhere to look. Action buttons sit under the right thumb.
 export default function TouchControls({ controls, nearby, onInteract, interactLabel, topInset }) {
   const { width, height, s, edge } = useScreen()
-  const radius = s(56), knob = s(26)
+  const radius = s(50), knob = s(22)
   const split = width * 0.42
   const zoneTop = topInset
   const zoneHeight = height - zoneTop
-  const rest = useMemo(() => ({ x: edge.left + radius + s(26), y: zoneHeight - edge.bottom - radius - s(20) }), [edge.left, edge.bottom, radius, zoneHeight, s])
+  const rest = useMemo(() => ({ x: edge.left + radius + s(22), y: zoneHeight - edge.bottom - radius - s(14) }), [edge.left, edge.bottom, radius, zoneHeight, s])
 
   const baseX = useSharedValue(rest.x), baseY = useSharedValue(rest.y)
   const knobX = useSharedValue(0), knobY = useSharedValue(0)
@@ -66,7 +66,8 @@ export default function TouchControls({ controls, nearby, onInteract, interactLa
 
   const ringStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: baseX.value - radius }, { translateY: baseY.value - radius }],
-    opacity: 0.55 + engaged.value * 0.45,
+    // Faint at rest so the scene stays clear; solid while the thumb is down.
+    opacity: 0.38 + engaged.value * 0.62,
     borderColor: sprint.value ? colors.goldBright : 'rgba(229,188,120,0.55)',
     borderWidth: sprint.value ? 2.5 : 1.5,
   }))
@@ -79,7 +80,7 @@ export default function TouchControls({ controls, nearby, onInteract, interactLa
     </GestureDetector>
     <GestureDetector gesture={move}>
       <View accessibilityLabel="Movement joystick. Drag with your left thumb to walk; push to the edge to sprint." style={{ position: 'absolute', left: 0, width: split, top: 0, bottom: 0 }}>
-        <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: radius * 2, height: radius * 2, borderRadius: radius, backgroundColor: 'rgba(25,56,60,0.42)', alignItems: 'center', justifyContent: 'center' }, ringStyle]}>
+        <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: radius * 2, height: radius * 2, borderRadius: radius, backgroundColor: 'rgba(25,56,60,0.32)', alignItems: 'center', justifyContent: 'center' }, ringStyle]}>
           <View style={{ position: 'absolute', width: radius * 1.2, height: radius * 1.2, borderRadius: radius * 0.6, borderWidth: 1, borderColor: 'rgba(229,188,120,0.18)' }} />
           <Animated.View style={[{ width: knob * 2, height: knob * 2, borderRadius: knob, backgroundColor: 'rgba(239,210,160,0.9)', borderWidth: 2, borderColor: '#fff3d6', shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 6, elevation: 6 }, knobStyle]} />
           <Animated.Text style={[{ position: 'absolute', top: -s(24), color: colors.goldBright, fontSize: s(11), fontWeight: '700', letterSpacing: 1.5 }, sprintStyle]}>SPRINT</Animated.Text>
@@ -94,7 +95,7 @@ function RoundButton({ gesture, size, label, glyph, highlight, pressed, accessib
   const { s } = useScreen()
   const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 - pressed.value * 0.08 }], opacity: 0.88 + pressed.value * 0.12 }))
   return <GestureDetector gesture={gesture}>
-    <Animated.View accessible accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={[{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: highlight ? 'rgba(229,188,120,0.92)' : 'rgba(25,56,60,0.78)', borderWidth: 1.5, borderColor: highlight ? '#fff0cf' : 'rgba(229,188,120,0.6)', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }, style]}>
+    <Animated.View accessible accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={[{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: highlight ? 'rgba(229,188,120,0.9)' : 'rgba(25,56,60,0.55)', borderWidth: 1.5, borderColor: highlight ? '#fff0cf' : 'rgba(229,188,120,0.6)', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }, style]}>
       <Text style={{ fontSize: size * 0.34, color: highlight ? colors.primaryText : colors.goldBright }}>{glyph}</Text>
       {label && <Text numberOfLines={1} style={{ fontSize: s(10), fontWeight: '800', letterSpacing: 0.6, color: highlight ? colors.primaryText : colors.text, marginTop: -2 }}>{label}</Text>}
     </Animated.View>
@@ -121,8 +122,8 @@ function ActionButtons({ controls, nearby, onInteract, interactLabel, simultaneo
     onFinalize: () => { interactPressed.value = withTiming(0, { duration: 120 }) },
   })
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }))
-  const jumpSize = s(76), interactSize = s(70)
-  return <View pointerEvents="box-none" style={{ position: 'absolute', right: edge.right + s(18), bottom: edge.bottom + s(16), alignItems: 'flex-end' }}>
+  const jumpSize = s(64), interactSize = s(58)
+  return <View pointerEvents="box-none" style={{ position: 'absolute', right: edge.right + s(14), bottom: edge.bottom + s(12), alignItems: 'flex-end' }}>
     {nearby && <Animated.View style={[{ marginBottom: s(10), marginRight: jumpSize * 0.62 }, pulseStyle]}>
       <RoundButton gesture={interact} size={interactSize} glyph="✦" label={interactLabel} highlight pressed={interactPressed} accessibilityLabel={`Interact: ${interactLabel}`} />
     </Animated.View>}

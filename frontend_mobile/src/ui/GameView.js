@@ -12,7 +12,7 @@ import { getForestTarget } from '../game/forestContent.js'
 import { createWalkFeel } from '../walkFeel.js'
 import { createEncounterTrigger } from '../game/encounterTrigger.js'
 import TouchControls from './TouchControls.js'
-import { BridgeNotice, ControlsHint, Crosshair, InteractionPrompt, JourneyPanel, RespawnNotice } from './AdventureHud.js'
+import { BridgeNotice, ControlsHint, Crosshair, InteractionPrompt, RespawnNotice } from './AdventureHud.js'
 import { useScreen } from './theme.js'
 
 // Phones above 2x density render at 2x and let the compositor upscale the frame.
@@ -33,7 +33,7 @@ function interactCopy(nearby, hall, run) {
   return null
 }
 
-export default function GameView({ active, playing, session, onPause, backendStatus, player, onLeaderboard, environment = 'forest', controlRef, forestRun, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle, onPrincessWalk, onPrincessArrived, speechTargetId, onSpeechAnchor, topInset, hudRight }) {
+export default function GameView({ active, playing, session, onPause, backendStatus, player, onLeaderboard, environment = 'forest', controlRef, forestRun, soundRef, onForestInteract, onForestBridgeLowered, onForestEnterCastle, onPrincessWalk, onPrincessArrived, speechTargetId, onSpeechAnchor, topInset }) {
   const { width, height, s } = useScreen()
   const controlsRef = useRef(null)
   const propsRef = useRef({})
@@ -60,6 +60,7 @@ export default function GameView({ active, playing, session, onPause, backendSta
   const onContextCreate = useCallback((gl) => {
     disposeRef.current?.()
     createdRef.current = true
+    setNearby(null)
     const room = forest ? createForestScene({ spawnId: propsRef.current.forestRun?.spawnId, layout: propsRef.current.forestRun?.layout }) : createCastleHallScene()
     tuneSceneForMobile(room.scene)
     let created
@@ -127,6 +128,7 @@ export default function GameView({ active, playing, session, onPause, backendSta
       const feet = motion.position
       room.update(dt, { ...propsRef.current, playerPosition: { x: feet.x, y: feet.y + EYE_HEIGHT, z: feet.z }, reducedMotion, onGuardianAppear: (id) => soundRef?.current?.play(id) })
       controls.update(dt)
+      if (__DEV__ && (globalThis.__navDbg = (globalThis.__navDbg || 0) + 1) % 20 === 0) { const run = propsRef.current.forestRun, pos = physicalPosition(); const bearing = (c) => { let d = (Math.atan2(-(c.x - pos.x), -(c.z - pos.z)) - camera.rotation.y) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return Math.round(d * 180 / Math.PI) }; const wolf = run?.layout?.encounters?.[1]; const goal = forest ? (run?.defeatedEnemyIds?.includes('wolf') ? [{ x: 4, z: -4 }, { x: 0, z: -20 }, { x: 0, z: -40 }].find((w) => w.z < pos.z - 1.5) : wolf) : [{ x: 0, z: -40 }, { x: -4, z: -51 }].find((w) => w.z < pos.z - 1.5); console.log('NAV', controls.active, goal ? Math.hypot(pos.x - goal.x, pos.z - goal.z).toFixed(1) : -1, goal ? bearing(goal) : 0, forestTarget()) }
       if (controls.active) {
         const nextNearby = forestTarget()
         if (nextNearby !== lastNearby) {
@@ -185,7 +187,7 @@ export default function GameView({ active, playing, session, onPause, backendSta
   // The control hint fades once players have had a moment to read it.
   useEffect(() => {
     if (!playing || !active) return
-    const timer = setTimeout(() => setHint(false), 9000)
+    const timer = setTimeout(() => setHint(false), 6000)
     return () => clearTimeout(timer)
   }, [playing, active])
 
@@ -202,12 +204,10 @@ export default function GameView({ active, playing, session, onPause, backendSta
     </View>}
     {playing && active && <>
       <Crosshair />
-      <JourneyPanel backendStatus={backendStatus} player={player} onLeaderboard={onLeaderboard} top={hudTop} />
       {nearby === 'forest-gate' && <BridgeNotice unlocked={!!backendStatus?.adventure_unlocked} top={hudTop} />}
-      {respawned && <RespawnNotice top={hudTop + s(nearby === 'forest-gate' ? 92 : 0)} />}
+      {respawned && <RespawnNotice top={hudTop + s(nearby === 'forest-gate' ? 60 : 0)} />}
       {copy?.title ? <InteractionPrompt title={copy.title} action={copy.action} onPress={() => interactRef.current()} /> : hint && <ControlsHint />}
       <TouchControls controls={controlsRef} nearby={!!copy} interactLabel={copy?.label} onInteract={() => interactRef.current()} topInset={topInset} />
     </>}
-    {playing && !active && hudRight && <JourneyPanel backendStatus={backendStatus} player={player} onLeaderboard={onLeaderboard} top={hudTop} right />}
   </>
 }

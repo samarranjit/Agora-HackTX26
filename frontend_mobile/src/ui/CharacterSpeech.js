@@ -1,34 +1,39 @@
 import { Platform, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { CloseButton, useBackToClose } from './PalaceDialog.js'
-import { Kicker } from './primitives.js'
+import { Kicker, StackedContext } from './primitives.js'
 import { colors, fonts, useKeyboardHeight, useScreen } from './theme.js'
 
-// A speech bubble anchored under the guardian's projected position (percent of screen).
+// The guardian's challenge, shown as a side panel on the half of the screen away from the
+// guardian so it stays in view. The pointer faces the guardian's projected position
+// (percent of screen). Content stacks into one column to fit the panel's height.
 export default function CharacterSpeech({ title, children, onClose, anchor }) {
   const { width, height, s, edge, compact } = useScreen()
   const keyboard = useKeyboardHeight()
   useBackToClose(onClose)
   const x = Number.isFinite(anchor?.x) ? anchor.x : 50
   const y = Number.isFinite(anchor?.y) ? anchor.y : 18
-  const cardWidth = Math.min(compact ? 440 : 520, width * 0.56, width - edge.left - edge.right)
-  const centerX = x / 100 * width
-  const left = Math.min(width - edge.right - cardWidth, Math.max(edge.left, centerX - cardWidth / 2))
-  // Leave room for the question; on short screens the bubble rises toward the top bar.
-  const top = Math.min(height * 0.24, Math.max(edge.top + s(10), y / 100 * height))
+  const cardWidth = Math.min(560, Math.max(width * 0.44, 340), width - edge.left - edge.right)
+  const onRight = x <= 50
+  const left = onRight ? width - edge.right - cardWidth : edge.left
+  const top = edge.top + s(4)
   const bottomInset = Platform.OS === 'android' && keyboard ? keyboard : edge.bottom
-  const arrow = Math.min(cardWidth - s(28), Math.max(s(28), centerX - left))
-  return <Animated.View entering={FadeIn.duration(180)} className="absolute inset-0" style={{ zIndex: 35, backgroundColor: 'rgba(18,15,12,0.18)' }}>
-    <View accessibilityViewIsModal style={{ position: 'absolute', left, top, width: cardWidth, maxHeight: height - top - bottomInset - s(6) }}>
-      <View style={{ position: 'absolute', top: -s(11), left: arrow - s(10), width: 0, height: 0, borderLeftWidth: s(10), borderRightWidth: s(10), borderBottomWidth: s(12), borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: colors.card }} />
+  const maxHeight = height - top - bottomInset - s(4)
+  const arrowY = Math.min(maxHeight * 0.5, Math.max(s(30), y / 100 * height - top + s(30)))
+  const arrow = s(11)
+  return <Animated.View entering={FadeIn.duration(180)} className="absolute inset-0" style={{ zIndex: 35 }}>
+    <View accessibilityViewIsModal style={{ position: 'absolute', left, top, width: cardWidth, maxHeight }}>
+      <View style={{ position: 'absolute', top: arrowY - arrow, [onRight ? 'left' : 'right']: -arrow + 1, width: 0, height: 0, borderTopWidth: arrow, borderBottomWidth: arrow, borderTopColor: 'transparent', borderBottomColor: 'transparent', [onRight ? 'borderRightWidth' : 'borderLeftWidth']: arrow, [onRight ? 'borderRightColor' : 'borderLeftColor']: colors.card }} />
       <View className="border" style={{ flexShrink: 1, borderRadius: s(14), backgroundColor: colors.card, borderColor: colors.border, elevation: 12, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } }}>
-        <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s(16) }}>
-          <View className="flex-row items-center justify-between">
-            <Kicker style={{ marginBottom: 0 }}>Challenge</Kicker>
+        <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s(compact ? 14 : 18), paddingTop: s(compact ? 10 : 14) }}>
+          <View className="flex-row items-start justify-between" style={{ gap: s(10), marginBottom: s(6) }}>
+            <View style={{ flexShrink: 1 }}>
+              <Kicker style={{ marginBottom: s(2) }}>Challenge</Kicker>
+              <Text accessibilityRole="header" className="text-snow" style={{ fontFamily: fonts.serif, fontSize: s(21), lineHeight: s(25) }}>{title}</Text>
+            </View>
             {onClose && <CloseButton onPress={onClose} />}
           </View>
-          <Text accessibilityRole="header" className="text-snow" style={{ fontFamily: fonts.serif, fontSize: s(22), lineHeight: s(26), marginVertical: s(6) }}>{title}</Text>
-          {children}
+          <StackedContext.Provider value={true}>{children}</StackedContext.Provider>
         </ScrollView>
       </View>
     </View>

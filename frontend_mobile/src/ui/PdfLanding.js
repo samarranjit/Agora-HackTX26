@@ -1,4 +1,4 @@
-import { ActivityIndicator, Text, View } from 'react-native'
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as DocumentPicker from 'expo-document-picker'
 import { File } from 'expo-file-system'
@@ -32,7 +32,7 @@ function PackRow({ pack, busy, onSelect }) {
 }
 
 export default function PdfLanding({ state, onSelect, onRetry, onSelectPack, onRefresh }) {
-  const { s, wide } = useScreen()
+  const { s, wide, height } = useScreen()
   const busy = ['checking', 'uploading', 'processing'].includes(state.phase)
   const choose = async () => {
     if (busy) return
@@ -45,20 +45,21 @@ export default function PdfLanding({ state, onSelect, onRetry, onSelectPack, onR
     {state.libraryStatus === 'loading' && <View className="flex-row items-center" style={{ gap: s(8), marginTop: s(12) }}><ActivityIndicator color={colors.goldSoft} /><Body muted>Loading your study sets…</Body></View>}
     {state.libraryStatus === 'ready' && !state.packs?.length && <Body style={{ marginTop: s(12) }}>No saved study sets yet. Choose your first PDF.</Body>}
     {state.libraryError && <View accessibilityRole="alert" style={{ marginTop: s(10) }}><Body>{state.libraryError.message}</Body><Button full disabled={busy} label="Retry study sets" onPress={onRefresh} /></View>}
-    <View style={{ marginTop: s(6) }}>
+    {/* Many saved sets scroll inside this list so the dialog itself stays one screen. */}
+    <ScrollView nestedScrollEnabled style={{ marginTop: s(4), maxHeight: wide ? height * 0.36 : undefined }}>
       {state.packs?.map((pack, index) => <View key={pack.document_id}>{index > 0 && <Divider />}<PackRow pack={pack} busy={busy} onSelect={onSelectPack} /></View>)}
-    </View>
+    </ScrollView>
     {state.libraryStatus === 'ready' && <Button variant="text" disabled={busy} label="Refresh study sets" onPress={onRefresh} />}
   </View>
   const upload = <View style={{ flex: wide ? 1 : undefined }}>
-    <View className="flex-row items-center" style={{ gap: s(16), marginBottom: s(14) }}>
+    <View className="flex-row items-center" style={{ gap: s(12), marginBottom: s(10) }}>
       <View className="items-center justify-center border" style={{ width: s(50), height: s(58), borderRadius: s(16), borderBottomLeftRadius: s(24), borderBottomRightRadius: s(24), borderColor: 'rgba(205,183,134,0.47)', backgroundColor: 'rgba(205,183,134,0.04)' }}>
         <Text style={{ color: colors.goldBright, fontSize: s(30) }}>♜</Text>
       </View>
       <Body style={{ flex: 1, color: colors.sageLight }}>Upload a PDF to begin your adventure.</Body>
     </View>
     <Tap accessibilityRole="button" accessibilityLabel="Choose study PDF" accessibilityState={{ disabled: busy }} disabled={busy} onPress={choose} style={({ pressed }) => ({ opacity: busy ? 0.55 : pressed ? 0.85 : 1 })}>
-      <LinearGradient colors={['#2b4a49', '#263c40']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ alignItems: 'center', justifyContent: 'center', gap: s(8), minHeight: s(wide ? 150 : 130), padding: s(18), borderRadius: s(10), borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(215,195,144,0.67)' }}>
+      <LinearGradient colors={['#2b4a49', '#263c40']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ alignItems: 'center', justifyContent: 'center', gap: s(6), minHeight: s(wide ? 112 : 100), padding: s(14), borderRadius: s(10), borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(215,195,144,0.67)' }}>
         <Text style={{ color: colors.goldBright, fontSize: s(30) }}>↥</Text>
         <Text className="text-center font-bold text-cream" style={{ fontSize: s(15) }}>Tap to choose a PDF</Text>
         <Text className="text-center text-sage" style={{ fontSize: s(12) }}>PDF only · up to {PDF_MAX_BYTES / 1024 / 1024} MB</Text>
