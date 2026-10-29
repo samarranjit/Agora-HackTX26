@@ -105,7 +105,17 @@ export function Encounter({ session, state, item, note, footer, actions = [] }) 
         {(q || item) && <Button variant="primary" full compact disabled={state.busy || !!state.unresolved} label={q ? 'Continue to the next question' : 'Practice another question'} onPress={() => { session.continue(); if (!q) session.practice() }} />}
       </View>} />
     {footer}
-    <ActionRow>{!q && <Button compact disabled={state.busy} label="Finish review" onPress={() => session.continue()} />}{actions}</ActionRow>
+    <ActionRow>
+  {!q && actions.length === 0 && (
+    <Button
+      compact
+      disabled={state.busy}
+      label="Finish review"
+      onPress={() => session.continue()}
+    />
+  )}
+  {actions}
+</ActionRow>
   </View>
   if (!q) return <View>{note}<Body muted>{state.busy ? 'Awaiting the backend…' : 'No pending question. Approach a story item to study, or the current guardian to battle.'}</Body>{footer}<ActionRow>{actions}</ActionRow></View>
   const locked = state.busy || !!state.unresolved
